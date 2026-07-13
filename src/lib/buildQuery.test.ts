@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_QUERY_LENGTH } from '../data/terms'
 import {
+  buildAutoSplitLines,
   buildCombined,
   buildExclusions,
   buildQuery,
   buildSafeLines,
   defaultConfig,
+  mergeConfig,
   type QueryConfig,
 } from './buildQuery'
 
@@ -23,13 +26,13 @@ function fullConfig(): QueryConfig {
 describe('buildCombined', () => {
   it('erzeugt das dokumentierte DE-Beispiel exakt (inkl. Dynamax)', () => {
     expect(buildCombined(fullConfig())).toBe(
-      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!Entfernung100-&!Alter730-',
+      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Entfernung100-&!Alter730-',
     )
   })
 
   it('wechselt mit lang=en alle lokalisierten Begriffe', () => {
     expect(buildCombined({ ...fullConfig(), lang: 'en' })).toBe(
-      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!dynamax&!gigantamax&!distance100-&!age730-',
+      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!dynamax&!gigantamax&!@special&!distance100-&!age730-',
     )
   })
 
@@ -78,7 +81,7 @@ describe('buildSafeLines', () => {
     const lines = buildSafeLines(fullConfig())
     expect(lines).toHaveLength(3)
     expect(lines[0]).toBe(
-      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!Entfernung100-&!Alter730-',
+      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Entfernung100-&!Alter730-',
     )
     for (const line of lines) {
       expect(line).not.toContain(',') // rein UND, keine ODER-Gruppe
@@ -120,5 +123,77 @@ describe('buildQuery', () => {
     }
     expect(buildQuery(cfg).lines).toHaveLength(0)
     expect(buildExclusions(cfg)).toHaveLength(0)
+  })
+})
+
+/** Konfiguration, deren kombinierter String das Limit überschreitet (viele Jahre). */
+function oversizedConfig(): QueryConfig {
+  return {
+    ...defaultConfig(),
+    stars: ['0*', '1*', '2*', '3*'],
+    lowCpEnabled: true,
+    ageEnabled: true,
+    ageMode: 'years',
+    keepYears: [2016, 2017, 2018, 2019, 2020, 2021],
+  }
+}
+
+describe('Auto-Split bei Überlänge', () => {
+  it('teilt die Ziele auf mehrere Zeilen ≤ Limit auf', () => {
+    const cfg = oversizedConfig()
+    expect(buildCombined(cfg).length).toBeGreaterThan(MAX_QUERY_LENGTH)
+
+    const result = buildQuery(cfg)
+    expect(result.autoSplit).toBe(true)
+    expect(result.lines.length).toBeGreaterThan(1)
+    for (const line of result.lines) {
+      expect(line.length).toBeLessThanOrEqual(MAX_QUERY_LENGTH)
+    }
+  })
+
+  it('behält in jeder Teilzeile ALLE Ausschlüsse (Sicherheit)', () => {
+    const cfg = oversizedConfig()
+    const exclusions = buildExclusions(cfg)
+    for (const line of buildAutoSplitLines(cfg)) {
+      for (const exclusion of exclusions) {
+        expect(line).toContain(exclusion)
+      }
+    }
+  })
+
+  it('deckt zusammen alle Ziele genau einmal ab', () => {
+    const cfg = oversizedConfig()
+    const targets = buildAutoSplitLines(cfg).flatMap((l) => l.split('&')[0]!.split(','))
+    expect(targets.sort()).toEqual(['0*', '1*', '2*', '3*', 'WP-500'].sort())
+  })
+
+  it('splittet nicht, wenn das Limit eingehalten wird', () => {
+    const result = buildQuery(defaultConfig())
+    expect(result.autoSplit).toBe(false)
+    expect(result.lines).toHaveLength(1)
+  })
+})
+
+describe('mergeConfig', () => {
+  it('ergänzt fehlende neue Felder mit Defaults', () => {
+    const merged = mergeConfig({ lang: 'en', protections: { shiny: false } }, defaultConfig())
+    expect(merged.lang).toBe('en')
+    expect(merged.protections.shiny).toBe(false)
+    expect(merged.protections.specialMoves).toBe(true) // neues Kriterium → Default
+    expect(merged.stars).toEqual(defaultConfig().stars)
+  })
+
+  it('verwirft ungültige Stern-Stufen und Jahre', () => {
+    const merged = mergeConfig(
+      { stars: ['0*', '9*', 42], keepYears: [2016, 'x'] },
+      defaultConfig(),
+    )
+    expect(merged.stars).toEqual(['0*'])
+    expect(merged.keepYears).toEqual([2016])
+  })
+
+  it('fällt bei Nicht-Objekten auf die Defaults zurück', () => {
+    expect(mergeConfig('kaputt', defaultConfig())).toEqual(defaultConfig())
+    expect(mergeConfig(null, defaultConfig())).toEqual(defaultConfig())
   })
 })
