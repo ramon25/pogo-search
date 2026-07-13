@@ -32,6 +32,14 @@ Wichtige Spielmechanik, auf der die Logik basiert:
   - **🍀 Lucky Trades** – alte Fänge als Tausch-Kandidaten finden
     (`Jahr2016,Jahr2017&…`); bereits Getauschte werden automatisch ausgeschlossen
     (`!getauscht`), der Alters-Schutz ist in diesem Modus deaktiviert
+  - **🌍 Reise-Fänge** – Fänge aus z. B. Tromsø oder New York wiederfinden. Das
+    Spiel kennt keine Ort-Suche, aber Distanz-Ringe: Das Tool berechnet die
+    Luftlinie Heimatort→Reiseziel (Haversine) und generiert
+    `Entfernung{min}-{max}` mit einstellbarer Toleranz. Heimatort per
+    Städte-Suche, GPS oder Koordinaten (bleibt auf dem Gerät, landet nie in
+    Share-Links); Reiseziel aus einer eingebauten Offline-Städteliste
+    (~2100 Städte, [GeoNames](https://www.geonames.org/), CC BY 4.0). Die
+    Suche zuhause ausführen – die Distanz misst ab dem aktuellen Standort.
 - Schutz-Toggles (Shiny, Glücks, Crypto, erlöst, kostümiert, 4★, legendär, mysteriös,
   Favorit, XXL, XXS, Dynamax, Gigadynamax, Spezialattacken `@spezial`,
   Mega-entwickelt `Mega1-`, Kumpel-Level `Kumpel4-`, Arena-Verteidiger) –

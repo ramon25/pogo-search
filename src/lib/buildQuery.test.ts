@@ -269,11 +269,55 @@ describe('Lucky-Trade-Modus', () => {
   })
 })
 
+describe('Reise-Fänge-Modus', () => {
+  const travelConfig = (): QueryConfig => ({
+    ...defaultConfig(),
+    mode: 'travel',
+    travelRing: [2662, 2762],
+  })
+
+  it('nutzt den Distanz-Ring als Ziel', () => {
+    expect(buildCombined(travelConfig()).startsWith('Entfernung2662-2762&!Schillernd&')).toBe(
+      true,
+    )
+    expect(
+      buildCombined({ ...travelConfig(), lang: 'en' }).startsWith('distance2662-2762&'),
+    ).toBe(true)
+  })
+
+  it('unterdrückt den Distanz-Schutz (Widerspruch zum Ring)', () => {
+    const cfg: QueryConfig = { ...travelConfig(), distanceEnabled: true }
+    expect(buildCombined(cfg)).not.toContain('!Entfernung')
+  })
+
+  it('behält den Alters-Schutz bei', () => {
+    const cfg: QueryConfig = { ...travelConfig(), ageEnabled: true }
+    expect(buildCombined(cfg)).toContain('!Alter730-')
+  })
+
+  it('gibt ohne Ring keine Zeilen aus (Heimat/Ziel fehlen)', () => {
+    const cfg: QueryConfig = { ...travelConfig(), travelRing: null }
+    expect(buildQuery(cfg).lines).toHaveLength(0)
+    expect(buildQuery({ ...cfg, safeMode: true }).lines).toHaveLength(0)
+  })
+})
+
 describe('mergeConfig Modus-Validierung', () => {
   it('fällt bei unbekanntem Modus auf cleanup zurück', () => {
     expect(mergeConfig({ mode: 'kaputt' }, defaultConfig()).mode).toBe('cleanup')
     expect(mergeConfig({ mode: 'luckyTrade' }, defaultConfig()).mode).toBe('luckyTrade')
+    expect(mergeConfig({ mode: 'travel' }, defaultConfig()).mode).toBe('travel')
     expect(mergeConfig({ evolveVariant: 'xyz' }, defaultConfig()).evolveVariant).toBe('all')
+  })
+
+  it('validiert den Distanz-Ring', () => {
+    expect(mergeConfig({ travelRing: [100, 200] }, defaultConfig()).travelRing).toEqual([
+      100, 200,
+    ])
+    expect(mergeConfig({ travelRing: [200, 100] }, defaultConfig()).travelRing).toBeNull()
+    expect(mergeConfig({ travelRing: ['a', 'b'] }, defaultConfig()).travelRing).toBeNull()
+    expect(mergeConfig({ travelRing: [1] }, defaultConfig()).travelRing).toBeNull()
+    expect(mergeConfig({}, defaultConfig()).travelRing).toBeNull()
   })
 })
 

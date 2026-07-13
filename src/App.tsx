@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Chip } from './components/Chip'
 import { Explainer } from './components/Explainer'
 import { History, type HistoryEntry } from './components/History'
+import { LocationPicker } from './components/LocationPicker'
 import { NumberField } from './components/NumberField'
 import { OutputPanel } from './components/OutputPanel'
 import { Presets, type Preset } from './components/Presets'
@@ -18,10 +19,21 @@ import {
   STAR_TIERS,
   type QueryConfig,
 } from './lib/buildQuery'
+import { distanceKm, distanceRing, type GeoPoint } from './lib/geo'
 import { buildShareUrl, decodeConfig } from './lib/urlState'
 
 /** Maximale Anzahl gemerkter Kopiervorgänge. */
 const HISTORY_LIMIT = 8
+
+/**
+ * Orte für den Reise-Modus. Bewusst getrennt von der Query-Konfiguration:
+ * Der Heimatort ist privat und darf nie in geteilten Links oder Presets landen.
+ */
+interface TravelState {
+  home: GeoPoint | null
+  dest: GeoPoint | null
+  toleranceKm: number
+}
 
 type Theme = 'system' | 'light' | 'dark'
 
@@ -58,7 +70,27 @@ export default function App() {
   )
   const [presets, setPresets] = useLocalStorage<Preset[]>('pogo-search:presets', [])
   const [history, setHistory] = useLocalStorage<HistoryEntry[]>('pogo-search:history', [])
+  const [travel, setTravel] = useLocalStorage<TravelState>('pogo-search:travel', {
+    home: null,
+    dest: null,
+    toleranceKm: 50,
+  })
   const [theme, setTheme] = useLocalStorage<Theme>('pogo-search:theme', 'system')
+
+  // Distanz-Ring aus Heimat/Ziel ableiten und in die Konfiguration spiegeln
+  // (nur der Ring wandert in Suchstring, Presets und Share-Links).
+  useEffect(() => {
+    const ring =
+      travel.home && travel.dest
+        ? distanceRing(travel.home, travel.dest, travel.toleranceKm)
+        : null
+    setConfig((prev) =>
+      prev.travelRing?.[0] === ring?.[0] && prev.travelRing?.[1] === ring?.[1] &&
+      (prev.travelRing === null) === (ring === null)
+        ? prev
+        : { ...prev, travelRing: ring },
+    )
+  }, [travel, setConfig])
 
   /** Kopierten String in die Historie aufnehmen (dedupliziert, begrenzt). */
   const recordCopy = (text: string) =>
@@ -131,6 +163,11 @@ export default function App() {
               active={config.mode === 'luckyTrade'}
               onToggle={() => patch({ mode: 'luckyTrade' })}
             />
+            <Chip
+              label="🌍 Reise-Fänge"
+              active={config.mode === 'travel'}
+              onToggle={() => patch({ mode: 'travel' })}
+            />
           </div>
           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             {config.mode === 'cleanup' &&
@@ -139,6 +176,8 @@ export default function App() {
               'Entwicklungs-Futter für Masseentwicklungen (XP/Glücks-Ei) finden – Wertvolles bleibt aussen vor.'}
             {config.mode === 'luckyTrade' &&
               'Alte Fänge als Tausch-Kandidaten finden – je älter, desto höher die Glücks-Pokémon-Chance.'}
+            {config.mode === 'travel' &&
+              'Fänge von einer Reise wiederfinden – über die Distanz zwischen Heimat und Reiseziel.'}
           </p>
         </Section>
 
@@ -250,6 +289,59 @@ export default function App() {
           </Section>
         )}
 
+        {config.mode === 'travel' && (
+          <Section
+            title="Ziel: Wo warst du unterwegs?"
+            subtitle="Das Spiel kennt keine Ort-Suche – aber einen Distanz-Ring: Entfernung{min}-{max} ab deinem aktuellen Standort."
+          >
+            <div className="space-y-2">
+              <LocationPicker
+                title="Heimatort"
+                value={travel.home}
+                allowGps
+                onChange={(home) => setTravel((prev) => ({ ...prev, home }))}
+              />
+              <LocationPicker
+                title="Reiseziel"
+                value={travel.dest}
+                onChange={(dest) => setTravel((prev) => ({ ...prev, dest }))}
+              />
+              <NumberField
+                label="Toleranz ±"
+                value={travel.toleranceKm}
+                min={5}
+                max={1000}
+                unit="km"
+                onChange={(toleranceKm) => setTravel((prev) => ({ ...prev, toleranceKm }))}
+              />
+            </div>
+
+            {travel.home && travel.dest && config.travelRing && (
+              <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
+                {travel.home.label} → {travel.dest.label}: Luftlinie ≈{' '}
+                <strong>{distanceKm(travel.home, travel.dest).toLocaleString('de-CH')} km</strong>{' '}
+                ⇒ Ring {config.travelRing[0].toLocaleString('de-CH')}–
+                {config.travelRing[1].toLocaleString('de-CH')} km
+              </p>
+            )}
+
+            <div className="mt-3 space-y-2">
+              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                📍 Die Suche <strong>zuhause ausführen</strong> – das Spiel misst die
+                Distanz ab deinem aktuellen Standort, der Ring ist ab dem Heimatort
+                berechnet.
+              </p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Ein Ring ist ein Kreis: Fänge aus anderen Orten in gleicher Entfernung
+                erscheinen mit. Der Heimatort bleibt auf diesem Gerät und landet nie in
+                geteilten Links. Tipp für künftige Reisen: Fänge vor Ort mit einem Tag
+                wie <code className="font-mono">#tromsø</code> markieren – danach sind
+                sie jederzeit exakt per Tag-Suche auffindbar.
+              </p>
+            </div>
+          </Section>
+        )}
+
         {config.mode === 'luckyTrade' && (
           <Section
             title="Ziel: Fangjahre für den Tausch"
@@ -321,13 +413,21 @@ export default function App() {
         </Section>
 
         <Section title="Parametrische Schutz-Kriterien">
-          <Toggle
-            label="Weit weg gefangen behalten"
-            info="Schliesst Pokémon aus, die weiter als N km entfernt gefangen wurden."
-            checked={config.distanceEnabled}
-            onChange={(v) => patch({ distanceEnabled: v })}
-          />
-          {config.distanceEnabled && (
+          {config.mode === 'travel' && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Der Distanz-Schutz ist im Reise-Modus deaktiviert – die Entfernung ist
+              hier das Ziel der Suche.
+            </p>
+          )}
+          {config.mode !== 'travel' && (
+            <Toggle
+              label="Weit weg gefangen behalten"
+              info="Schliesst Pokémon aus, die weiter als N km entfernt gefangen wurden."
+              checked={config.distanceEnabled}
+              onChange={(v) => patch({ distanceEnabled: v })}
+            />
+          )}
+          {config.mode !== 'travel' && config.distanceEnabled && (
             <div className="mb-2 space-y-2">
               <NumberField
                 label="Ab"
