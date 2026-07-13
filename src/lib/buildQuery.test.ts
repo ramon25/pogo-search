@@ -4,6 +4,7 @@ import {
   buildAutoSplitLines,
   buildCombined,
   buildExclusions,
+  buildProtectedLines,
   buildQuery,
   buildSafeLines,
   defaultConfig,
@@ -26,13 +27,13 @@ function fullConfig(): QueryConfig {
 describe('buildCombined', () => {
   it('erzeugt das dokumentierte DE-Beispiel exakt (inkl. Dynamax)', () => {
     expect(buildCombined(fullConfig())).toBe(
-      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Entfernung100-&!Alter730-',
+      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Mega1-&!Kumpel4-&!Verteidiger&!Entfernung100-&!Alter730-',
     )
   })
 
   it('wechselt mit lang=en alle lokalisierten Begriffe', () => {
     expect(buildCombined({ ...fullConfig(), lang: 'en' })).toBe(
-      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!dynamax&!gigantamax&!@special&!distance100-&!age730-',
+      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!dynamax&!gigantamax&!@special&!mega1-&!buddy4-&!defender&!distance100-&!age730-',
     )
   })
 
@@ -81,7 +82,7 @@ describe('buildSafeLines', () => {
     const lines = buildSafeLines(fullConfig())
     expect(lines).toHaveLength(3)
     expect(lines[0]).toBe(
-      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Entfernung100-&!Alter730-',
+      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Mega1-&!Kumpel4-&!Verteidiger&!Entfernung100-&!Alter730-',
     )
     for (const line of lines) {
       expect(line).not.toContain(',') // rein UND, keine ODER-Gruppe
@@ -134,7 +135,7 @@ function oversizedConfig(): QueryConfig {
     lowCpEnabled: true,
     ageEnabled: true,
     ageMode: 'years',
-    keepYears: [2016, 2017, 2018, 2019, 2020, 2021],
+    keepYears: [2016, 2017, 2018],
   }
 }
 
@@ -171,6 +172,42 @@ describe('Auto-Split bei Überlänge', () => {
     const result = buildQuery(defaultConfig())
     expect(result.autoSplit).toBe(false)
     expect(result.lines).toHaveLength(1)
+  })
+})
+
+describe('buildProtectedLines (Umkehr-Check)', () => {
+  it('erzeugt eine reine ODER-Suche über alle Schutz-Kriterien', () => {
+    const lines = buildProtectedLines(fullConfig())
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toBe(
+      'Schillernd,Glücks,Crypto,erlöst,kostümiert,4*,legendär,mysteriös,Favorit,XXL,XXS,Dynamax,Gigadynamax,@spezial,Mega1-,Kumpel4-,Verteidiger,Entfernung100-,Alter730-',
+    )
+    expect(lines[0]).not.toContain('!')
+    expect(lines[0]).not.toContain('&')
+  })
+
+  it('teilt bei Überlänge auf mehrere ODER-Zeilen auf, die alles abdecken', () => {
+    const cfg: QueryConfig = {
+      ...fullConfig(),
+      ageMode: 'years',
+      keepYears: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025],
+    }
+    const lines = buildProtectedLines(cfg)
+    const allTerms = buildExclusions(cfg).map((e) => e.slice(1))
+    expect(lines.flatMap((l) => l.split(','))).toEqual(allTerms)
+    for (const line of lines) {
+      expect(line.length).toBeLessThanOrEqual(MAX_QUERY_LENGTH)
+    }
+  })
+
+  it('ist leer, wenn kein Schutz-Kriterium aktiv ist', () => {
+    const cfg: QueryConfig = {
+      ...defaultConfig(),
+      protections: Object.fromEntries(
+        Object.keys(defaultConfig().protections).map((k) => [k, false]),
+      ) as QueryConfig['protections'],
+    }
+    expect(buildProtectedLines(cfg)).toHaveLength(0)
   })
 })
 

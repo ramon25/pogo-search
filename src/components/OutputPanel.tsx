@@ -8,6 +8,7 @@ interface OutputPanelProps {
   autoSplit: boolean
   safeMode: boolean
   onSafeModeChange: (safeMode: boolean) => void
+  onCopied?: (text: string) => void
 }
 
 function CharCounter({ length }: { length: number }) {
@@ -58,6 +59,7 @@ export function OutputPanel({
   autoSplit,
   safeMode,
   onSafeModeChange,
+  onCopied,
 }: OutputPanelProps) {
   const anyOverLimit = lines.some((l) => l.length > MAX_QUERY_LENGTH)
 
@@ -110,7 +112,7 @@ export function OutputPanel({
             </code>
             <div className="mt-2 flex items-center justify-between gap-2">
               <CharCounter length={line.length} />
-              <CopyButton text={line} small={lines.length > 1} />
+              <CopyButton text={line} small={lines.length > 1} onCopied={onCopied} />
             </div>
           </div>
         ))}

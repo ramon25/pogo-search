@@ -1,15 +1,27 @@
 import { useEffect } from 'react'
 import { Chip } from './components/Chip'
 import { Explainer } from './components/Explainer'
+import { History, type HistoryEntry } from './components/History'
 import { NumberField } from './components/NumberField'
 import { OutputPanel } from './components/OutputPanel'
 import { Presets, type Preset } from './components/Presets'
+import { ProtectedCheck } from './components/ProtectedCheck'
 import { Section } from './components/Section'
 import { Toggle } from './components/Toggle'
 import { FIRST_YEAR, PROTECTION_KEYS, PROTECTIONS, type Lang } from './data/terms'
 import { useLocalStorage } from './hooks/useLocalStorage'
-import { buildQuery, defaultConfig, mergeConfig, STAR_TIERS, type QueryConfig } from './lib/buildQuery'
+import {
+  buildProtectedLines,
+  buildQuery,
+  defaultConfig,
+  mergeConfig,
+  STAR_TIERS,
+  type QueryConfig,
+} from './lib/buildQuery'
 import { buildShareUrl, decodeConfig } from './lib/urlState'
+
+/** Maximale Anzahl gemerkter Kopiervorgänge. */
+const HISTORY_LIMIT = 8
 
 type Theme = 'system' | 'light' | 'dark'
 
@@ -45,7 +57,17 @@ export default function App() {
     mergeConfig,
   )
   const [presets, setPresets] = useLocalStorage<Preset[]>('pogo-search:presets', [])
+  const [history, setHistory] = useLocalStorage<HistoryEntry[]>('pogo-search:history', [])
   const [theme, setTheme] = useLocalStorage<Theme>('pogo-search:theme', 'system')
+
+  /** Kopierten String in die Historie aufnehmen (dedupliziert, begrenzt). */
+  const recordCopy = (text: string) =>
+    setHistory((prev) =>
+      [{ text, ts: Date.now() }, ...prev.filter((e) => e.text !== text)].slice(
+        0,
+        HISTORY_LIMIT,
+      ),
+    )
 
   // Dark Mode: System-Präferenz respektieren, manueller Toggle überschreibt.
   useEffect(() => {
@@ -251,6 +273,15 @@ export default function App() {
           autoSplit={result.autoSplit}
           safeMode={config.safeMode}
           onSafeModeChange={(v) => patch({ safeMode: v })}
+          onCopied={recordCopy}
+        />
+
+        <ProtectedCheck lines={buildProtectedLines(config)} onCopied={recordCopy} />
+
+        <History
+          entries={history}
+          onCopied={recordCopy}
+          onClear={() => setHistory([])}
         />
 
         <Explainer />
@@ -267,6 +298,12 @@ export default function App() {
           onLoad={(preset) => setConfig(mergeConfig(preset.config, defaultConfig()))}
           onLoadConfig={(cfg) => setConfig(cfg)}
           onDelete={(name) => setPresets((prev) => prev.filter((p) => p.name !== name))}
+          onImport={(imported) =>
+            setPresets((prev) => [
+              ...prev.filter((p) => !imported.some((i) => i.name === p.name)),
+              ...imported,
+            ])
+          }
           onReset={() => setConfig(defaultConfig())}
         />
 

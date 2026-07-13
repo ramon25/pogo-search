@@ -26,7 +26,8 @@ Wichtige Spielmechanik, auf der die Logik basiert:
 ## Features
 
 - Schutz-Toggles (Shiny, Glücks, Crypto, erlöst, kostümiert, 4★, legendär, mysteriös,
-  Favorit, XXL, XXS, Dynamax, Gigadynamax, Spezialattacken `@spezial`) –
+  Favorit, XXL, XXS, Dynamax, Gigadynamax, Spezialattacken `@spezial`,
+  Mega-entwickelt `Mega1-`, Kumpel-Level `Kumpel4-`, Arena-Verteidiger) –
   standardmässig alle an
 - Parametrisch: Distanz in km, Alter in Tagen **oder** Fangjahre (Multi-Select)
 - Ziel-Stufen 0★–3★ (ODER-Gruppe), „Low WP", „Alle nicht-Geschützten"
@@ -34,9 +35,13 @@ Wichtige Spielmechanik, auf der die Logik basiert:
 - **Auto-Split:** überschreitet der String 200 Zeichen, werden die Ziele automatisch
   auf mehrere Teilsuchen verteilt – jede Teilsuche behält alle Ausschlüsse
 - Vorschau-Chips der aktiven Ziele und Ausschlüsse
+- **Umkehr-Check:** zusätzliche ODER-Suche über alle Schutz-Kriterien
+  („Das wird geschützt") als Kontrollblick vor dem Transferieren
+- **Kopier-Historie:** die letzten kopierten Strings zum schnellen Wiederholen
 - Kopieren-Button (Clipboard API mit `execCommand`-Fallback), Zeichenzähler `n / 200`
 - Konfiguration + eigene Presets in `localStorage`, eingebaute Vorlagen
-  (Standard/Konservativ/Aggressiv/Alles Ungeschützte), „Reset auf Standard"
+  (Standard/Konservativ/Aggressiv/Alles Ungeschützte), „Reset auf Standard",
+  Preset-Export/-Import als JSON-Datei (z. B. für den Handy-Wechsel)
 - **Teilbarer Link:** „Link teilen" kopiert eine URL mit der aktuellen Konfiguration
   (`?c=…`), die beim Öffnen automatisch übernommen wird
 - Erklär-Sektion „So räumst du sicher auf" mit Sortier-Tipp

@@ -6,9 +6,11 @@ interface CopyButtonProps {
   small?: boolean
   /** Button-Beschriftung im Ruhezustand (Default: „Kopieren"). */
   label?: string
+  /** Wird nach erfolgreichem Kopieren aufgerufen (z. B. für die Historie). */
+  onCopied?: (text: string) => void
 }
 
-export function CopyButton({ text, small, label = 'Kopieren' }: CopyButtonProps) {
+export function CopyButton({ text, small, label = 'Kopieren', onCopied }: CopyButtonProps) {
   const [state, setState] = useState<'idle' | 'copied' | 'error'>('idle')
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -16,6 +18,7 @@ export function CopyButton({ text, small, label = 'Kopieren' }: CopyButtonProps)
 
   async function handleCopy() {
     const ok = await copyText(text)
+    if (ok) onCopied?.(text)
     setState(ok ? 'copied' : 'error')
     clearTimeout(timer.current)
     timer.current = setTimeout(() => setState('idle'), 2000)

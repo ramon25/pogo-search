@@ -148,6 +148,28 @@ export function buildAutoSplitLines(cfg: QueryConfig): string[] {
   return lines
 }
 
+/**
+ * Umkehr-Check: ODER-Suche über alle aktiven Schutz-Kriterien
+ * (`Schillernd,Glücks,…`). Zeigt im Spiel alles, was die Transfer-Suche
+ * verschont – zur Kontrolle vor dem Aufräumen. Wird bei Überlänge greedy
+ * auf mehrere Zeilen verteilt; bei einer reinen ODER-Suche ist das
+ * verlustfrei (Vereinigung der Teilergebnisse).
+ */
+export function buildProtectedLines(cfg: QueryConfig): string[] {
+  const terms = buildExclusions(cfg).map((e) => e.slice(1))
+  const lines: string[] = []
+  let group: string[] = []
+  for (const term of terms) {
+    if (group.length > 0 && [...group, term].join(',').length > MAX_QUERY_LENGTH) {
+      lines.push(group.join(','))
+      group = []
+    }
+    group.push(term)
+  }
+  if (group.length > 0) lines.push(group.join(','))
+  return lines
+}
+
 export interface QueryResult {
   /** Alle auszugebenden Zeilen (1 im Normalmodus, n im sicheren/Split-Modus). */
   lines: string[]
