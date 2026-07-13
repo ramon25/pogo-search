@@ -1,0 +1,271 @@
+import { useEffect } from 'react'
+import { Chip } from './components/Chip'
+import { NumberField } from './components/NumberField'
+import { OutputPanel } from './components/OutputPanel'
+import { Presets, type Preset } from './components/Presets'
+import { Section } from './components/Section'
+import { Toggle } from './components/Toggle'
+import { FIRST_YEAR, PROTECTION_KEYS, PROTECTIONS, type Lang } from './data/terms'
+import { useLocalStorage } from './hooks/useLocalStorage'
+import {
+  buildQuery,
+  defaultConfig,
+  STAR_TIERS,
+  type QueryConfig,
+  type StarTier,
+} from './lib/buildQuery'
+
+type Theme = 'system' | 'light' | 'dark'
+
+/** Gespeicherte Konfiguration mit den aktuellen Defaults zusammenführen. */
+function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig {
+  if (typeof stored !== 'object' || stored === null) return fallback
+  const s = stored as Partial<QueryConfig>
+  return {
+    ...fallback,
+    ...s,
+    protections: { ...fallback.protections, ...(s.protections ?? {}) },
+    stars: Array.isArray(s.stars)
+      ? s.stars.filter((t): t is StarTier => STAR_TIERS.includes(t as StarTier))
+      : fallback.stars,
+    keepYears: Array.isArray(s.keepYears)
+      ? s.keepYears.filter((y): y is number => typeof y === 'number')
+      : fallback.keepYears,
+  }
+}
+
+const CURRENT_YEAR = new Date().getFullYear()
+const YEARS = Array.from({ length: CURRENT_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i)
+
+export default function App() {
+  const [config, setConfig] = useLocalStorage<QueryConfig>(
+    'pogo-search:config',
+    defaultConfig(),
+    mergeConfig,
+  )
+  const [presets, setPresets] = useLocalStorage<Preset[]>('pogo-search:presets', [])
+  const [theme, setTheme] = useLocalStorage<Theme>('pogo-search:theme', 'system')
+
+  // Dark Mode: System-Präferenz respektieren, manueller Toggle überschreibt.
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const dark = theme === 'dark' || (theme === 'system' && media.matches)
+      document.documentElement.classList.toggle('dark', dark)
+    }
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
+  }, [theme])
+
+  const patch = (partial: Partial<QueryConfig>) =>
+    setConfig((prev) => ({ ...prev, ...partial }))
+
+  const result = buildQuery(config)
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 pt-6 pb-16">
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+            PoGO Box-Cleanup
+          </h1>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            Suchstring-Generator: findet Transfer-Kandidaten, schützt alles Wertvolle.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            setTheme(theme === 'dark' ? 'light' : theme === 'light' ? 'system' : 'dark')
+          }
+          title={`Design: ${theme === 'system' ? 'System' : theme === 'dark' ? 'Dunkel' : 'Hell'} (tippen zum Wechseln)`}
+          className="min-h-11 min-w-11 shrink-0 rounded-lg border border-zinc-300 text-lg dark:border-zinc-600"
+        >
+          {theme === 'system' ? '🌓' : theme === 'dark' ? '🌙' : '☀️'}
+        </button>
+      </header>
+
+      <div className="space-y-4">
+        <Section
+          title="Spielsprache"
+          subtitle="Suchbegriffe sind im Spiel lokalisiert – die Sprache muss zur Spieleinstellung passen."
+        >
+          <div className="flex gap-2">
+            {(['de', 'en'] as Lang[]).map((lang) => (
+              <Chip
+                key={lang}
+                label={lang === 'de' ? 'Deutsch' : 'English'}
+                active={config.lang === lang}
+                onToggle={() => patch({ lang })}
+              />
+            ))}
+          </div>
+        </Section>
+
+        <Section
+          title="Ziel: Was soll gefunden werden?"
+          subtitle="Stufen werden als ODER-Gruppe kombiniert (0*,1*,2*) – die Ausschlüsse gelten dank Präzedenz für alle."
+        >
+          <div className="flex flex-wrap gap-2">
+            {STAR_TIERS.map((tier) => (
+              <Chip
+                key={tier}
+                label={tier.replace('*', '★')}
+                active={config.stars.includes(tier)}
+                disabled={config.allMode}
+                onToggle={() =>
+                  patch({
+                    stars: config.stars.includes(tier)
+                      ? config.stars.filter((t) => t !== tier)
+                      : [...config.stars, tier],
+                  })
+                }
+              />
+            ))}
+          </div>
+          <div className="mt-3 space-y-1">
+            <Toggle
+              label="Low WP"
+              info="Zusätzlich Pokémon mit niedrigen Kampfpunkten einschliessen."
+              checked={config.lowCpEnabled && !config.allMode}
+              onChange={(v) => patch({ lowCpEnabled: v })}
+            />
+            {config.lowCpEnabled && !config.allMode && (
+              <NumberField
+                label="WP bis"
+                value={config.lowCpMax}
+                min={10}
+                max={9999}
+                onChange={(v) => patch({ lowCpMax: v })}
+              />
+            )}
+            <Toggle
+              label="Alle nicht-Geschützten"
+              info="Kein positives Kriterium – zeigt alles, was kein Schutz-Kriterium erfüllt."
+              checked={config.allMode}
+              onChange={(v) => patch({ allMode: v })}
+            />
+          </div>
+        </Section>
+
+        <Section
+          title="Schutz-Kriterien"
+          subtitle="Jeder aktive Schalter schliesst die Kategorie per !Begriff aus – sie kann nicht im Ergebnis landen."
+        >
+          <div className="divide-y divide-zinc-100 dark:divide-zinc-700">
+            {PROTECTION_KEYS.map((key) => (
+              <Toggle
+                key={key}
+                label={PROTECTIONS[key].label}
+                info={PROTECTIONS[key].info}
+                checked={config.protections[key]}
+                onChange={(v) =>
+                  patch({ protections: { ...config.protections, [key]: v } })
+                }
+              />
+            ))}
+          </div>
+        </Section>
+
+        <Section title="Parametrische Schutz-Kriterien">
+          <Toggle
+            label="Weit weg gefangen behalten"
+            info="Schliesst Pokémon aus, die weiter als N km entfernt gefangen wurden."
+            checked={config.distanceEnabled}
+            onChange={(v) => patch({ distanceEnabled: v })}
+          />
+          {config.distanceEnabled && (
+            <div className="mb-2 space-y-2">
+              <NumberField
+                label="Ab"
+                value={config.distanceKm}
+                min={1}
+                max={100000}
+                unit="km"
+                onChange={(v) => patch({ distanceKm: v })}
+              />
+              <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                📍 Die Distanz misst ab dem <strong>aktuellen Standort</strong>. Suche
+                zuhause ausführen, sonst verschiebt sich der Bezugspunkt.
+              </p>
+            </div>
+          )}
+
+          <Toggle
+            label="Besonders alt behalten"
+            info="Schliesst alte Fänge aus – nach Alter in Tagen oder nach Fangjahr."
+            checked={config.ageEnabled}
+            onChange={(v) => patch({ ageEnabled: v })}
+          />
+          {config.ageEnabled && (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Chip
+                  label="Nach Tagen"
+                  active={config.ageMode === 'days'}
+                  onToggle={() => patch({ ageMode: 'days' })}
+                />
+                <Chip
+                  label="Nach Jahr"
+                  active={config.ageMode === 'years'}
+                  onToggle={() => patch({ ageMode: 'years' })}
+                />
+              </div>
+              {config.ageMode === 'days' ? (
+                <NumberField
+                  label="Älter als"
+                  value={config.ageDays}
+                  min={1}
+                  max={100000}
+                  unit="Tage"
+                  onChange={(v) => patch({ ageDays: v })}
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {YEARS.map((year) => (
+                    <Chip
+                      key={year}
+                      label={String(year)}
+                      active={config.keepYears.includes(year)}
+                      onToggle={() =>
+                        patch({
+                          keepYears: config.keepYears.includes(year)
+                            ? config.keepYears.filter((y) => y !== year)
+                            : [...config.keepYears, year],
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </Section>
+
+        <OutputPanel
+          lines={result.lines}
+          safeMode={config.safeMode}
+          onSafeModeChange={(v) => patch({ safeMode: v })}
+        />
+
+        <Presets
+          presets={presets}
+          onSave={(name) =>
+            setPresets((prev) => [
+              ...prev.filter((p) => p.name !== name),
+              { name, config },
+            ])
+          }
+          onLoad={(preset) => setConfig(mergeConfig(preset.config, defaultConfig()))}
+          onDelete={(name) => setPresets((prev) => prev.filter((p) => p.name !== name))}
+          onReset={() => setConfig(defaultConfig())}
+        />
+
+        <footer className="pt-2 text-center text-xs text-zinc-400 dark:text-zinc-500">
+          Statisch, ohne Backend – alle Daten bleiben im Browser (localStorage).
+        </footer>
+      </div>
+    </div>
+  )
+}
