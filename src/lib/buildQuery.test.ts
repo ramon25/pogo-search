@@ -21,15 +21,15 @@ function fullConfig(): QueryConfig {
 }
 
 describe('buildCombined', () => {
-  it('erzeugt das dokumentierte DE-Beispiel exakt', () => {
+  it('erzeugt das dokumentierte DE-Beispiel exakt (inkl. Dynamax)', () => {
     expect(buildCombined(fullConfig())).toBe(
-      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Entfernung100-&!Alter730-',
+      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!Entfernung100-&!Alter730-',
     )
   })
 
   it('wechselt mit lang=en alle lokalisierten Begriffe', () => {
     expect(buildCombined({ ...fullConfig(), lang: 'en' })).toBe(
-      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!distance100-&!age730-',
+      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!dynamax&!gigantamax&!distance100-&!age730-',
     )
   })
 
@@ -78,7 +78,7 @@ describe('buildSafeLines', () => {
     const lines = buildSafeLines(fullConfig())
     expect(lines).toHaveLength(3)
     expect(lines[0]).toBe(
-      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Entfernung100-&!Alter730-',
+      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!Entfernung100-&!Alter730-',
     )
     for (const line of lines) {
       expect(line).not.toContain(',') // rein UND, keine ODER-Gruppe

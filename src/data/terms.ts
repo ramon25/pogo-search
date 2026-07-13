@@ -21,6 +21,8 @@ export const PROTECTION_KEYS = [
   'favorite',
   'xxl',
   'xxs',
+  'dynamax',
+  'gigantamax',
 ] as const
 
 export type ProtectionKey = (typeof PROTECTION_KEYS)[number]
@@ -88,6 +90,16 @@ export const PROTECTIONS: Record<ProtectionKey, ProtectionMeta> = {
     terms: { de: 'XXS', en: 'XXS' },
     label: 'Grösse XXS',
     info: 'Besonders kleine Pokémon behalten.',
+  },
+  dynamax: {
+    terms: { de: 'Dynamax', en: 'dynamax' },
+    label: 'Dynamax',
+    info: 'Dynamax-Pokémon aus Max-Kämpfen behalten.',
+  },
+  gigantamax: {
+    terms: { de: 'Gigadynamax', en: 'gigantamax' },
+    label: 'Gigadynamax',
+    info: 'Gigadynamax-Pokémon behalten (deutlich seltener als Dynamax).',
   },
 }
 
