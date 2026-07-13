@@ -9,7 +9,7 @@ aufräumt: Es findet Transfer-Kandidaten, ohne dass Wertvolles im Ergebnis lande
 Das Tool baut eine reine UND-Kette aus verneinten Schutz-Kriterien:
 
 ```
-0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Entfernung100-&!Alter730-
+0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!Entfernung100-&!Alter730-
 ```
 
 Wichtige Spielmechanik, auf der die Logik basiert:
@@ -26,7 +26,7 @@ Wichtige Spielmechanik, auf der die Logik basiert:
 ## Features
 
 - Schutz-Toggles (Shiny, Glücks, Crypto, erlöst, kostümiert, 4★, legendär, mysteriös,
-  Favorit, XXL, XXS) – standardmässig alle an
+  Favorit, XXL, XXS, Dynamax, Gigadynamax) – standardmässig alle an
 - Parametrisch: Distanz in km, Alter in Tagen **oder** Fangjahre (Multi-Select)
 - Ziel-Stufen 0★–3★ (ODER-Gruppe), „Low WP", „Alle nicht-Geschützten"
 - **Sicherer Modus:** pro Ziel-Stufe eine eigene reine UND-Zeile
