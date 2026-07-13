@@ -25,6 +25,13 @@ Wichtige Spielmechanik, auf der die Logik basiert:
 
 ## Features
 
+- **Drei Modi:**
+  - **📦 Aufräumen** – Transfer-Kandidaten finden (Original-Funktion)
+  - **✨ Entwickeln** – Masseentwicklungs-Futter finden (`entwickeln&…`, optional nur
+    neue Dex-Einträge via `Neueentwicklung`/`evolvenew`), z. B. fürs Glücks-Ei
+  - **🍀 Lucky Trades** – alte Fänge als Tausch-Kandidaten finden
+    (`Jahr2016,Jahr2017&…`); bereits Getauschte werden automatisch ausgeschlossen
+    (`!getauscht`), der Alters-Schutz ist in diesem Modus deaktiviert
 - Schutz-Toggles (Shiny, Glücks, Crypto, erlöst, kostümiert, 4★, legendär, mysteriös,
   Favorit, XXL, XXS, Dynamax, Gigadynamax, Spezialattacken `@spezial`,
   Mega-entwickelt `Mega1-`, Kumpel-Level `Kumpel4-`, Arena-Verteidiger) –

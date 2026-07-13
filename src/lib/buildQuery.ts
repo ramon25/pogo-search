@@ -8,6 +8,7 @@
 
 import {
   MAX_QUERY_LENGTH,
+  MODE_TERMS,
   PARAMETRIC_TERMS,
   PROTECTION_KEYS,
   PROTECTIONS,
@@ -21,27 +22,44 @@ export const STAR_TIERS: readonly StarTier[] = ['0*', '1*', '2*', '3*']
 
 export type AgeMode = 'days' | 'years'
 
+/**
+ * Werkzeug-Modus:
+ * - cleanup: Transfer-Kandidaten finden (Original-Funktion)
+ * - evolve: Masseentwicklungs-Futter finden (`entwickeln&…`)
+ * - luckyTrade: alte Fänge als Lucky-Trade-Kandidaten finden (`Jahr2016,…`)
+ */
+export type Mode = 'cleanup' | 'evolve' | 'luckyTrade'
+
+export type EvolveVariant = 'all' | 'new'
+
 export interface QueryConfig {
   /** Sprache der generierten Suchbegriffe (nicht der UI). */
   lang: Lang
+  mode: Mode
   /** Schutz-Kriterien: aktiv = wird per `!Begriff` ausgeschlossen. */
   protections: Record<ProtectionKey, boolean>
   /** „Weit weg gefangen behalten" → !Entfernung{km}- */
   distanceEnabled: boolean
   distanceKm: number
-  /** „Besonders alt behalten" (Tage-Modus oder Jahr-Modus). */
+  /** „Besonders alt behalten" (Tage-Modus oder Jahr-Modus). Nicht im Lucky-Trade-Modus. */
   ageEnabled: boolean
   ageMode: AgeMode
   ageDays: number
   /** Zu schützende Fangjahre (Jahr-Modus). */
   keepYears: number[]
-  /** „Alle nicht-Geschützten": kein positives Kriterium, nur Ausschlüsse. */
+  /** „Alle nicht-Geschützten": kein positives Kriterium, nur Ausschlüsse (Aufräumen). */
   allMode: boolean
-  /** Ziel-Stufen (ODER-Gruppe). */
+  /** Ziel-Stufen (ODER-Gruppe, Aufräumen). */
   stars: StarTier[]
-  /** „Low WP" → WP-{n} als zusätzliches Ziel. */
+  /** „Low WP" → WP-{n} als zusätzliches Ziel (Aufräumen). */
   lowCpEnabled: boolean
   lowCpMax: number
+  /** Entwickeln-Modus: alle entwickelbaren oder nur solche mit neuem Dex-Eintrag. */
+  evolveVariant: EvolveVariant
+  /** Entwickeln-Modus: optionaler IV-Filter (leer = alle). */
+  evolveStars: StarTier[]
+  /** Lucky-Trade-Modus: gesuchte Fangjahre (ODER-Gruppe). */
+  tradeYears: number[]
   /** Sicherer Modus: pro Ziel eine eigene reine UND-Zeile. */
   safeMode: boolean
 }
@@ -49,6 +67,7 @@ export interface QueryConfig {
 export function defaultConfig(): QueryConfig {
   return {
     lang: 'de',
+    mode: 'cleanup',
     protections: Object.fromEntries(PROTECTION_KEYS.map((k) => [k, true])) as Record<
       ProtectionKey,
       boolean
@@ -63,6 +82,9 @@ export function defaultConfig(): QueryConfig {
     stars: ['0*', '1*', '2*'],
     lowCpEnabled: false,
     lowCpMax: 500,
+    evolveVariant: 'all',
+    evolveStars: [],
+    tradeYears: [2016, 2017],
     safeMode: false,
   }
 }
@@ -75,10 +97,16 @@ export function buildExclusions(cfg: QueryConfig): string[] {
   for (const key of PROTECTION_KEYS) {
     if (cfg.protections[key]) exclusions.push('!' + PROTECTIONS[key].terms[lang])
   }
+  if (cfg.mode === 'luckyTrade') {
+    // Bereits getauschte Pokémon können nicht erneut getauscht werden.
+    exclusions.push('!' + MODE_TERMS.traded[lang])
+  }
   if (cfg.distanceEnabled) {
     exclusions.push('!' + PARAMETRIC_TERMS.distance(lang, cfg.distanceKm))
   }
-  if (cfg.ageEnabled) {
+  // Im Lucky-Trade-Modus ist das Fangjahr das ZIEL – der Alters-Schutz
+  // würde ihm widersprechen (Jahr2016&!Jahr2016 wäre immer leer).
+  if (cfg.ageEnabled && cfg.mode !== 'luckyTrade') {
     if (cfg.ageMode === 'days') {
       exclusions.push('!' + PARAMETRIC_TERMS.age(lang, cfg.ageDays))
     } else {
@@ -91,49 +119,77 @@ export function buildExclusions(cfg: QueryConfig): string[] {
 }
 
 /**
- * Positive Ziel-Kriterien (werden untereinander mit `,` als ODER verknüpft).
- * Leer im Modus „Alle nicht-Geschützten".
+ * Feste UND-Klauseln, die im jeweiligen Modus vor der Ziel-Gruppe stehen
+ * (z. B. `entwickeln` im Entwickeln-Modus). Stehen in JEDER Teilzeile.
  */
-export function buildTargets(cfg: QueryConfig): string[] {
-  if (cfg.allMode) return []
-  const targets: string[] = STAR_TIERS.filter((t) => cfg.stars.includes(t))
-  if (cfg.lowCpEnabled) targets.push(PARAMETRIC_TERMS.maxCp(cfg.lang, cfg.lowCpMax))
-  return targets
+export function buildPrefix(cfg: QueryConfig): string[] {
+  if (cfg.mode !== 'evolve') return []
+  const prefix: string[] = [MODE_TERMS.evolve[cfg.lang]]
+  if (cfg.evolveVariant === 'new') prefix.push(MODE_TERMS.evolveNew[cfg.lang])
+  return prefix
 }
 
 /**
- * Kombinierter String: `ziel,ziel&!ausschluss&!ausschluss…`
- * Dank Präzedenz (ODER vor UND) gilt: (ziel ODER ziel) UND ausschlüsse.
+ * Positive Ziel-Kriterien (werden untereinander mit `,` als ODER verknüpft).
+ * Aufräumen: Stufen + Low WP (leer bei „Alle nicht-Geschützten").
+ * Entwickeln: optionaler IV-Filter. Lucky Trades: Fangjahre.
+ */
+export function buildTargets(cfg: QueryConfig): string[] {
+  switch (cfg.mode) {
+    case 'evolve':
+      return STAR_TIERS.filter((t) => cfg.evolveStars.includes(t))
+    case 'luckyTrade':
+      return [...cfg.tradeYears]
+        .sort((a, b) => a - b)
+        .map((year) => PARAMETRIC_TERMS.year(cfg.lang, year))
+    default: {
+      if (cfg.allMode) return []
+      const targets: string[] = STAR_TIERS.filter((t) => cfg.stars.includes(t))
+      if (cfg.lowCpEnabled) targets.push(PARAMETRIC_TERMS.maxCp(cfg.lang, cfg.lowCpMax))
+      return targets
+    }
+  }
+}
+
+/** Prefix-Klauseln, ODER-Zielgruppe und Ausschlüsse zu einer Zeile verbinden. */
+function joinLine(prefix: string[], targetGroup: string, exclusions: string[]): string {
+  return [...prefix, targetGroup, ...exclusions].filter(Boolean).join('&')
+}
+
+/**
+ * Kombinierter String: `[prefix&]ziel,ziel&!ausschluss&!ausschluss…`
+ * Dank Präzedenz (ODER vor UND) gilt: prefix UND (ziel ODER ziel) UND ausschlüsse.
  */
 export function buildCombined(cfg: QueryConfig): string {
-  const targetPart = buildTargets(cfg).join(',')
-  return [targetPart, ...buildExclusions(cfg)].filter(Boolean).join('&')
+  return joinLine(buildPrefix(cfg), buildTargets(cfg).join(','), buildExclusions(cfg))
 }
 
 /**
  * Sicherer Modus: pro Ziel ein eigener, reiner UND-String (keine ODER-Gruppe).
- * Im Modus „Alle nicht-Geschützten" gibt es genau eine Zeile (nur Ausschlüsse).
+ * Ohne Ziele gibt es genau eine Zeile (Prefix + Ausschlüsse).
  */
 export function buildSafeLines(cfg: QueryConfig): string[] {
+  const prefix = buildPrefix(cfg)
   const exclusions = buildExclusions(cfg)
   const targets = buildTargets(cfg)
   if (targets.length === 0) {
-    const line = exclusions.join('&')
+    const line = joinLine(prefix, '', exclusions)
     return line ? [line] : []
   }
-  return targets.map((target) => [target, ...exclusions].join('&'))
+  return targets.map((target) => joinLine(prefix, target, exclusions))
 }
 
 /**
  * Ziele greedy auf so wenige Zeilen wie möglich verteilen, sodass jede Zeile
- * das 200-Zeichen-Limit einhält. Jede Zeile trägt IMMER alle Ausschlüsse –
- * die dürfen nie aufgeteilt werden, sonst wäre eine Teilsuche unsicher.
+ * das 200-Zeichen-Limit einhält. Jede Zeile trägt IMMER den Prefix und alle
+ * Ausschlüsse – die dürfen nie aufgeteilt werden, sonst wäre eine Teilsuche
+ * unsicher.
  */
 export function buildAutoSplitLines(cfg: QueryConfig): string[] {
-  const exclusionPart = buildExclusions(cfg).join('&')
+  const prefix = buildPrefix(cfg)
+  const exclusions = buildExclusions(cfg)
   const targets = buildTargets(cfg)
-  const makeLine = (group: string[]) =>
-    [group.join(','), exclusionPart].filter(Boolean).join('&')
+  const makeLine = (group: string[]) => joinLine(prefix, group.join(','), exclusions)
 
   const lines: string[] = []
   let group: string[] = []
@@ -210,15 +266,23 @@ export function buildQuery(cfg: QueryConfig): QueryResult {
 export function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig {
   if (typeof stored !== 'object' || stored === null) return fallback
   const s = stored as Partial<QueryConfig>
+  const starList = (value: unknown, fallbackList: StarTier[]): StarTier[] =>
+    Array.isArray(value)
+      ? value.filter((t): t is StarTier => STAR_TIERS.includes(t as StarTier))
+      : fallbackList
+  const yearList = (value: unknown, fallbackList: number[]): number[] =>
+    Array.isArray(value)
+      ? value.filter((y): y is number => typeof y === 'number')
+      : fallbackList
   return {
     ...fallback,
     ...s,
+    mode: s.mode === 'evolve' || s.mode === 'luckyTrade' ? s.mode : 'cleanup',
+    evolveVariant: s.evolveVariant === 'new' ? 'new' : 'all',
     protections: { ...fallback.protections, ...(s.protections ?? {}) },
-    stars: Array.isArray(s.stars)
-      ? s.stars.filter((t): t is StarTier => STAR_TIERS.includes(t as StarTier))
-      : fallback.stars,
-    keepYears: Array.isArray(s.keepYears)
-      ? s.keepYears.filter((y): y is number => typeof y === 'number')
-      : fallback.keepYears,
+    stars: starList(s.stars, fallback.stars),
+    evolveStars: starList(s.evolveStars, fallback.evolveStars),
+    keepYears: yearList(s.keepYears, fallback.keepYears),
+    tradeYears: yearList(s.tradeYears, fallback.tradeYears),
   }
 }

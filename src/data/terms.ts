@@ -143,6 +143,17 @@ export const PARAMETRIC_TERMS = {
   maxCp: (lang: Lang, cp: number): string => `${lang === 'de' ? 'WP' : 'cp'}-${cp}`,
 } as const
 
+/**
+ * Modus-spezifische Begriffe (Entwickeln-/Lucky-Trade-Modus).
+ * `evolveNew` (Neueentwicklung) zeigt allein auch Pokémon, denen noch Bonbons
+ * fehlen – deshalb wird es im Tool immer mit `evolve` kombiniert.
+ */
+export const MODE_TERMS = {
+  evolve: { de: 'entwickeln', en: 'evolve' },
+  evolveNew: { de: 'Neueentwicklung', en: 'evolvenew' },
+  traded: { de: 'getauscht', en: 'traded' },
+} as const satisfies Record<string, Record<Lang, string>>
+
 /** Erstes Jahr, in dem Pokémon GO verfügbar war. */
 export const FIRST_YEAR = 2016
 

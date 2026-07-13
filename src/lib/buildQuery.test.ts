@@ -175,6 +175,108 @@ describe('Auto-Split bei Überlänge', () => {
   })
 })
 
+describe('Entwickeln-Modus', () => {
+  const evolveConfig = (): QueryConfig => ({ ...defaultConfig(), mode: 'evolve' })
+
+  it('stellt entwickeln als UND-Klausel voran', () => {
+    expect(buildCombined(evolveConfig()).startsWith('entwickeln&!Schillernd&')).toBe(true)
+    expect(buildCombined({ ...evolveConfig(), lang: 'en' }).startsWith('evolve&!shiny&')).toBe(
+      true,
+    )
+  })
+
+  it('kombiniert die Neue-Dex-Variante immer mit entwickeln', () => {
+    const cfg: QueryConfig = { ...evolveConfig(), evolveVariant: 'new' }
+    expect(buildCombined(cfg).startsWith('entwickeln&Neueentwicklung&')).toBe(true)
+    expect(buildCombined({ ...cfg, lang: 'en' }).startsWith('evolve&evolvenew&')).toBe(true)
+  })
+
+  it('hängt den optionalen IV-Filter als ODER-Gruppe hinter den Prefix', () => {
+    const cfg: QueryConfig = { ...evolveConfig(), evolveStars: ['0*', '1*'] }
+    expect(buildCombined(cfg).startsWith('entwickeln&0*,1*&!')).toBe(true)
+  })
+
+  it('behält den Prefix in jeder Zeile des sicheren Modus', () => {
+    const cfg: QueryConfig = { ...evolveConfig(), evolveStars: ['0*', '1*'], safeMode: true }
+    const lines = buildQuery(cfg).lines
+    expect(lines).toHaveLength(2)
+    for (const line of lines) {
+      expect(line.startsWith('entwickeln&')).toBe(true)
+      expect(line).not.toContain(',')
+    }
+  })
+
+  it('respektiert Distanz- und Alters-Schutz weiterhin', () => {
+    const cfg: QueryConfig = {
+      ...evolveConfig(),
+      distanceEnabled: true,
+      ageEnabled: true,
+    }
+    expect(buildCombined(cfg)).toContain('!Entfernung100-')
+    expect(buildCombined(cfg)).toContain('!Alter730-')
+  })
+})
+
+describe('Lucky-Trade-Modus', () => {
+  const tradeConfig = (): QueryConfig => ({ ...defaultConfig(), mode: 'luckyTrade' })
+
+  it('nutzt die Fangjahre als ODER-Ziel und schliesst Getauschte aus', () => {
+    const result = buildCombined(tradeConfig())
+    expect(result.startsWith('Jahr2016,Jahr2017&!Schillernd&')).toBe(true)
+    expect(result).toContain('&!getauscht')
+    expect(buildCombined({ ...tradeConfig(), lang: 'en' }).startsWith('year2016,year2017&')).toBe(
+      true,
+    )
+    expect(buildCombined({ ...tradeConfig(), lang: 'en' })).toContain('&!traded')
+  })
+
+  it('sortiert die Jahre aufsteigend', () => {
+    const cfg: QueryConfig = { ...tradeConfig(), tradeYears: [2019, 2016] }
+    expect(buildCombined(cfg).startsWith('Jahr2016,Jahr2019&')).toBe(true)
+  })
+
+  it('ignoriert den Alters-Schutz (Widerspruch zum Jahr-Ziel)', () => {
+    const cfg: QueryConfig = {
+      ...tradeConfig(),
+      ageEnabled: true,
+      ageMode: 'years',
+      keepYears: [2016],
+    }
+    const result = buildCombined(cfg)
+    expect(result).not.toContain('!Jahr')
+    expect(result).not.toContain('!Alter')
+  })
+
+  it('behält den Distanz-Schutz bei', () => {
+    const cfg: QueryConfig = { ...tradeConfig(), distanceEnabled: true }
+    expect(buildCombined(cfg)).toContain('!Entfernung100-')
+  })
+
+  it('behält im Auto-Split alle Ausschlüsse inkl. !getauscht pro Zeile', () => {
+    const cfg: QueryConfig = {
+      ...tradeConfig(),
+      tradeYears: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023],
+    }
+    const lines = buildAutoSplitLines(cfg)
+    expect(lines.length).toBeGreaterThan(1)
+    for (const line of lines) {
+      expect(line).toContain('!getauscht')
+      expect(line.length).toBeLessThanOrEqual(MAX_QUERY_LENGTH)
+    }
+    // Alle Jahre genau einmal abgedeckt
+    const years = lines.flatMap((l) => l.split('&').filter((c) => !c.startsWith('!'))[0]!.split(','))
+    expect(years).toHaveLength(8)
+  })
+})
+
+describe('mergeConfig Modus-Validierung', () => {
+  it('fällt bei unbekanntem Modus auf cleanup zurück', () => {
+    expect(mergeConfig({ mode: 'kaputt' }, defaultConfig()).mode).toBe('cleanup')
+    expect(mergeConfig({ mode: 'luckyTrade' }, defaultConfig()).mode).toBe('luckyTrade')
+    expect(mergeConfig({ evolveVariant: 'xyz' }, defaultConfig()).evolveVariant).toBe('all')
+  })
+})
+
 describe('buildProtectedLines (Umkehr-Check)', () => {
   it('erzeugt eine reine ODER-Suche über alle Schutz-Kriterien', () => {
     const lines = buildProtectedLines(fullConfig())

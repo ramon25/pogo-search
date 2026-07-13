@@ -44,4 +44,20 @@ export const RECIPES: Recipe[] = [
       allMode: true,
     }),
   },
+  {
+    name: 'XP: Masseentwicklung',
+    description: 'Entwickeln-Modus – Entwicklungs-Futter fürs Glücks-Ei finden.',
+    build: () => ({
+      ...defaultConfig(),
+      mode: 'evolve',
+    }),
+  },
+  {
+    name: 'Lucky Trades 2016/17',
+    description: 'Lucky-Trade-Modus – die ältesten Fänge als Tausch-Kandidaten.',
+    build: () => ({
+      ...defaultConfig(),
+      mode: 'luckyTrade',
+    }),
+  },
 ]
