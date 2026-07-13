@@ -135,6 +135,9 @@ export const PARAMETRIC_TERMS = {
   /** Distanz ab aktuellem Standort in km, „N und mehr": Entfernung100- */
   distance: (lang: Lang, km: number): string =>
     `${lang === 'de' ? 'Entfernung' : 'distance'}${km}-`,
+  /** Distanz-Bereich (Ring) in km: Entfernung2650-2750 */
+  distanceRange: (lang: Lang, minKm: number, maxKm: number): string =>
+    `${lang === 'de' ? 'Entfernung' : 'distance'}${minKm}-${maxKm}`,
   /** Fangalter in Tagen, „N und mehr": Alter730- */
   age: (lang: Lang, days: number): string => `${lang === 'de' ? 'Alter' : 'age'}${days}-`,
   /** Fangjahr, exakt: Jahr2016 */

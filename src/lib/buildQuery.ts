@@ -27,8 +27,9 @@ export type AgeMode = 'days' | 'years'
  * - cleanup: Transfer-Kandidaten finden (Original-Funktion)
  * - evolve: Masseentwicklungs-Futter finden (`entwickeln&…`)
  * - luckyTrade: alte Fänge als Lucky-Trade-Kandidaten finden (`Jahr2016,…`)
+ * - travel: Reise-Fänge über einen Distanz-Ring finden (`Entfernung2650-2750&…`)
  */
-export type Mode = 'cleanup' | 'evolve' | 'luckyTrade'
+export type Mode = 'cleanup' | 'evolve' | 'luckyTrade' | 'travel'
 
 export type EvolveVariant = 'all' | 'new'
 
@@ -60,6 +61,13 @@ export interface QueryConfig {
   evolveStars: StarTier[]
   /** Lucky-Trade-Modus: gesuchte Fangjahre (ODER-Gruppe). */
   tradeYears: number[]
+  /**
+   * Reise-Fänge-Modus: fertig berechneter Distanz-Ring [min, max] in km
+   * (Luftlinie Heimat→Ziel ± Toleranz). null, solange Heimat/Ziel fehlen.
+   * Der Heimatort selbst bleibt bewusst AUSSERHALB der Konfiguration
+   * (eigener localStorage-Schlüssel), damit er nie in geteilten Links landet.
+   */
+  travelRing: [number, number] | null
   /** Sicherer Modus: pro Ziel eine eigene reine UND-Zeile. */
   safeMode: boolean
 }
@@ -85,6 +93,7 @@ export function defaultConfig(): QueryConfig {
     evolveVariant: 'all',
     evolveStars: [],
     tradeYears: [2016, 2017],
+    travelRing: null,
     safeMode: false,
   }
 }
@@ -101,7 +110,9 @@ export function buildExclusions(cfg: QueryConfig): string[] {
     // Bereits getauschte Pokémon können nicht erneut getauscht werden.
     exclusions.push('!' + MODE_TERMS.traded[lang])
   }
-  if (cfg.distanceEnabled) {
+  // Im Reise-Modus ist die Entfernung das ZIEL (Ring) – der Distanz-Schutz
+  // würde ihm widersprechen und wird unterdrückt.
+  if (cfg.distanceEnabled && cfg.mode !== 'travel') {
     exclusions.push('!' + PARAMETRIC_TERMS.distance(lang, cfg.distanceKm))
   }
   // Im Lucky-Trade-Modus ist das Fangjahr das ZIEL – der Alters-Schutz
@@ -142,6 +153,10 @@ export function buildTargets(cfg: QueryConfig): string[] {
       return [...cfg.tradeYears]
         .sort((a, b) => a - b)
         .map((year) => PARAMETRIC_TERMS.year(cfg.lang, year))
+    case 'travel':
+      return cfg.travelRing
+        ? [PARAMETRIC_TERMS.distanceRange(cfg.lang, cfg.travelRing[0], cfg.travelRing[1])]
+        : []
     default: {
       if (cfg.allMode) return []
       const targets: string[] = STAR_TIERS.filter((t) => cfg.stars.includes(t))
@@ -239,6 +254,12 @@ export function buildQuery(cfg: QueryConfig): QueryResult {
   const exclusions = buildExclusions(cfg)
   const targets = buildTargets(cfg)
 
+  // Ohne Distanz-Ring hat der Reise-Modus kein Ziel – eine reine
+  // Ausschluss-Suche wäre hier irreführend, also nichts ausgeben.
+  if (cfg.mode === 'travel' && !cfg.travelRing) {
+    return { lines: [], exclusions, targets: [], autoSplit: false }
+  }
+
   let lines: string[]
   let autoSplit = false
   if (cfg.safeMode) {
@@ -277,7 +298,17 @@ export function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig
   return {
     ...fallback,
     ...s,
-    mode: s.mode === 'evolve' || s.mode === 'luckyTrade' ? s.mode : 'cleanup',
+    mode:
+      s.mode === 'evolve' || s.mode === 'luckyTrade' || s.mode === 'travel'
+        ? s.mode
+        : 'cleanup',
+    travelRing:
+      Array.isArray(s.travelRing) &&
+      s.travelRing.length === 2 &&
+      s.travelRing.every((n) => typeof n === 'number' && Number.isFinite(n)) &&
+      s.travelRing[0]! <= s.travelRing[1]!
+        ? [s.travelRing[0]!, s.travelRing[1]!]
+        : null,
     evolveVariant: s.evolveVariant === 'new' ? 'new' : 'all',
     protections: { ...fallback.protections, ...(s.protections ?? {}) },
     stars: starList(s.stars, fallback.stars),
