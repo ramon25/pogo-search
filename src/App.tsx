@@ -85,6 +85,7 @@ export default function App() {
     setConfig((prev) => ({ ...prev, ...partial }))
 
   const result = buildQuery(config)
+  const anyProtectionOn = PROTECTION_KEYS.some((k) => config.protections[k])
 
   return (
     <div className="mx-auto max-w-2xl px-4 pt-6 pb-16">
@@ -281,7 +282,29 @@ export default function App() {
         <Section
           title="Schutz-Kriterien"
           subtitle="Jeder aktive Schalter schliesst die Kategorie per !Begriff aus – sie kann nicht im Ergebnis landen."
+          action={
+            <button
+              type="button"
+              onClick={() =>
+                patch({
+                  protections: Object.fromEntries(
+                    PROTECTION_KEYS.map((k) => [k, !anyProtectionOn]),
+                  ) as QueryConfig['protections'],
+                })
+              }
+              className="min-h-9 shrink-0 rounded-lg border border-zinc-300 px-3 text-xs font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-600 dark:text-zinc-300"
+            >
+              {anyProtectionOn ? 'Alle aus' : 'Alle an'}
+            </button>
+          }
         >
+          {!anyProtectionOn && (
+            <p className="mb-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              ⚠️ Kein Schutz-Kriterium aktiv – die Suche schützt gerade nichts.
+              {config.mode === 'cleanup' &&
+                ' Beim Aufräumen ist das riskant: Ergebnis vor dem Transferieren genau prüfen!'}
+            </p>
+          )}
           <div className="divide-y divide-zinc-100 dark:divide-zinc-700">
             {PROTECTION_KEYS.map((key) => (
               <Toggle
