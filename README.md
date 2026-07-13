@@ -26,12 +26,22 @@ Wichtige Spielmechanik, auf der die Logik basiert:
 ## Features
 
 - Schutz-Toggles (Shiny, Glücks, Crypto, erlöst, kostümiert, 4★, legendär, mysteriös,
-  Favorit, XXL, XXS, Dynamax, Gigadynamax) – standardmässig alle an
+  Favorit, XXL, XXS, Dynamax, Gigadynamax, Spezialattacken `@spezial`) –
+  standardmässig alle an
 - Parametrisch: Distanz in km, Alter in Tagen **oder** Fangjahre (Multi-Select)
 - Ziel-Stufen 0★–3★ (ODER-Gruppe), „Low WP", „Alle nicht-Geschützten"
 - **Sicherer Modus:** pro Ziel-Stufe eine eigene reine UND-Zeile
+- **Auto-Split:** überschreitet der String 200 Zeichen, werden die Ziele automatisch
+  auf mehrere Teilsuchen verteilt – jede Teilsuche behält alle Ausschlüsse
+- Vorschau-Chips der aktiven Ziele und Ausschlüsse
 - Kopieren-Button (Clipboard API mit `execCommand`-Fallback), Zeichenzähler `n / 200`
-- Konfiguration + eigene Presets in `localStorage`, „Reset auf Standard"
+- Konfiguration + eigene Presets in `localStorage`, eingebaute Vorlagen
+  (Standard/Konservativ/Aggressiv/Alles Ungeschützte), „Reset auf Standard"
+- **Teilbarer Link:** „Link teilen" kopiert eine URL mit der aktuellen Konfiguration
+  (`?c=…`), die beim Öffnen automatisch übernommen wird
+- Erklär-Sektion „So räumst du sicher auf" mit Sortier-Tipp
+- **PWA:** auf dem Handy installierbar („Zum Home-Bildschirm hinzufügen"),
+  funktioniert nach dem ersten Besuch auch offline
 - Mobile-first, Dark Mode (System-Präferenz + manueller Toggle)
 
 ## Entwicklung

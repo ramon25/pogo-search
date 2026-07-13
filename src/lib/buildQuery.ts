@@ -7,6 +7,7 @@
  */
 
 import {
+  MAX_QUERY_LENGTH,
   PARAMETRIC_TERMS,
   PROTECTION_KEYS,
   PROTECTIONS,
@@ -123,17 +124,79 @@ export function buildSafeLines(cfg: QueryConfig): string[] {
   return targets.map((target) => [target, ...exclusions].join('&'))
 }
 
+/**
+ * Ziele greedy auf so wenige Zeilen wie möglich verteilen, sodass jede Zeile
+ * das 200-Zeichen-Limit einhält. Jede Zeile trägt IMMER alle Ausschlüsse –
+ * die dürfen nie aufgeteilt werden, sonst wäre eine Teilsuche unsicher.
+ */
+export function buildAutoSplitLines(cfg: QueryConfig): string[] {
+  const exclusionPart = buildExclusions(cfg).join('&')
+  const targets = buildTargets(cfg)
+  const makeLine = (group: string[]) =>
+    [group.join(','), exclusionPart].filter(Boolean).join('&')
+
+  const lines: string[] = []
+  let group: string[] = []
+  for (const target of targets) {
+    if (group.length > 0 && makeLine([...group, target]).length > MAX_QUERY_LENGTH) {
+      lines.push(makeLine(group))
+      group = []
+    }
+    group.push(target)
+  }
+  if (group.length > 0) lines.push(makeLine(group))
+  return lines
+}
+
 export interface QueryResult {
-  /** Alle auszugebenden Zeilen (1 im Normalmodus, n im sicheren Modus). */
+  /** Alle auszugebenden Zeilen (1 im Normalmodus, n im sicheren/Split-Modus). */
   lines: string[]
   exclusions: string[]
   targets: string[]
+  /** true, wenn der kombinierte String das Limit überschritt und automatisch aufgeteilt wurde. */
+  autoSplit: boolean
 }
 
 export function buildQuery(cfg: QueryConfig): QueryResult {
+  const exclusions = buildExclusions(cfg)
+  const targets = buildTargets(cfg)
+
+  let lines: string[]
+  let autoSplit = false
+  if (cfg.safeMode) {
+    lines = buildSafeLines(cfg)
+  } else {
+    const combined = buildCombined(cfg)
+    if (!combined) {
+      lines = []
+    } else if (combined.length <= MAX_QUERY_LENGTH) {
+      lines = [combined]
+    } else {
+      const split = buildAutoSplitLines(cfg)
+      autoSplit = split.length > 1
+      lines = autoSplit ? split : [combined]
+    }
+  }
+
+  return { lines, exclusions, targets, autoSplit }
+}
+
+/**
+ * Gespeicherte/geteilte Konfiguration mit den aktuellen Defaults zusammenführen –
+ * neue Felder (z. B. später ergänzte Schutz-Kriterien) erhalten so ihre Defaults.
+ */
+export function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig {
+  if (typeof stored !== 'object' || stored === null) return fallback
+  const s = stored as Partial<QueryConfig>
   return {
-    lines: cfg.safeMode ? buildSafeLines(cfg) : [buildCombined(cfg)].filter(Boolean),
-    exclusions: buildExclusions(cfg),
-    targets: buildTargets(cfg),
+    ...fallback,
+    ...s,
+    protections: { ...fallback.protections, ...(s.protections ?? {}) },
+    stars: Array.isArray(s.stars)
+      ? s.stars.filter((t): t is StarTier => STAR_TIERS.includes(t as StarTier))
+      : fallback.stars,
+    keepYears: Array.isArray(s.keepYears)
+      ? s.keepYears.filter((y): y is number => typeof y === 'number')
+      : fallback.keepYears,
   }
 }

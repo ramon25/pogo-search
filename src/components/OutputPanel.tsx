@@ -3,6 +3,9 @@ import { CopyButton } from './CopyButton'
 
 interface OutputPanelProps {
   lines: string[]
+  targets: string[]
+  exclusions: string[]
+  autoSplit: boolean
   safeMode: boolean
   onSafeModeChange: (safeMode: boolean) => void
 }
@@ -22,8 +25,40 @@ function CharCounter({ length }: { length: number }) {
   )
 }
 
+/** Kompakte Vorschau der aktiven Ziele und Ausschlüsse. */
+function PreviewChips({ targets, exclusions }: { targets: string[]; exclusions: string[] }) {
+  if (targets.length === 0 && exclusions.length === 0) return null
+  return (
+    <div className="mt-3 flex flex-wrap gap-1.5">
+      {targets.map((t) => (
+        <span
+          key={t}
+          className="rounded-full bg-emerald-100 px-2.5 py-1 font-mono text-xs text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+        >
+          {t}
+        </span>
+      ))}
+      {exclusions.map((e) => (
+        <span
+          key={e}
+          className="rounded-full bg-zinc-100 px-2.5 py-1 font-mono text-xs text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"
+        >
+          {e}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 /** Live-Ausgabe des Suchstrings inkl. Zeichenzähler und Kopieren-Button. */
-export function OutputPanel({ lines, safeMode, onSafeModeChange }: OutputPanelProps) {
+export function OutputPanel({
+  lines,
+  targets,
+  exclusions,
+  autoSplit,
+  safeMode,
+  onSafeModeChange,
+}: OutputPanelProps) {
   const anyOverLimit = lines.some((l) => l.length > MAX_QUERY_LENGTH)
 
   return (
@@ -47,6 +82,16 @@ export function OutputPanel({ lines, safeMode, onSafeModeChange }: OutputPanelPr
           ? 'Pro Ziel-Stufe ein eigener reiner UND-String – nacheinander abarbeiten.'
           : 'Eine kombinierte Suche: Ziele als ODER-Gruppe, Ausschlüsse per UND.'}
       </p>
+
+      <PreviewChips targets={targets} exclusions={exclusions} />
+
+      {autoSplit && (
+        <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          ✂️ Über {MAX_QUERY_LENGTH} Zeichen – automatisch auf {lines.length} Teilsuchen
+          aufgeteilt. Jede Teilsuche enthält alle Ausschlüsse; bitte nacheinander
+          abarbeiten.
+        </p>
+      )}
 
       <div className="mt-3 space-y-3">
         {lines.length === 0 && (
@@ -73,8 +118,9 @@ export function OutputPanel({ lines, safeMode, onSafeModeChange }: OutputPanelPr
 
       {anyOverLimit && (
         <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          ⚠️ Über {MAX_QUERY_LENGTH} Zeichen – das Spiel schneidet die Suche ab. Kriterien
-          reduzieren oder auf mehrere Suchen aufteilen (z. B. „Sicherer Modus" nutzen).
+          ⚠️ Über {MAX_QUERY_LENGTH} Zeichen – das Spiel schneidet die Suche ab. Die
+          Ausschlüsse lassen sich nicht sicher aufteilen: bitte Kriterien reduzieren
+          (z. B. weniger Jahre auswählen oder den Tage-Modus nutzen).
         </p>
       )}
     </section>

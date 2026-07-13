@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { RECIPES } from '../data/recipes'
 import type { QueryConfig } from '../lib/buildQuery'
 import { Section } from './Section'
+import { CopyButton } from './CopyButton'
 
 export interface Preset {
   name: string
@@ -9,14 +11,24 @@ export interface Preset {
 
 interface PresetsProps {
   presets: Preset[]
+  shareUrl: string
   onSave: (name: string) => void
   onLoad: (preset: Preset) => void
+  onLoadConfig: (config: QueryConfig) => void
   onDelete: (name: string) => void
   onReset: () => void
 }
 
-/** Benutzerdefinierte Presets speichern/laden/löschen (localStorage). */
-export function Presets({ presets, onSave, onLoad, onDelete, onReset }: PresetsProps) {
+/** Vorlagen, benutzerdefinierte Presets (localStorage) und Teilen-Link. */
+export function Presets({
+  presets,
+  shareUrl,
+  onSave,
+  onLoad,
+  onLoadConfig,
+  onDelete,
+  onReset,
+}: PresetsProps) {
   const [name, setName] = useState('')
 
   function save() {
@@ -29,8 +41,26 @@ export function Presets({ presets, onSave, onLoad, onDelete, onReset }: PresetsP
   return (
     <Section
       title="Presets"
-      subtitle="Aktuelle Konfiguration unter eigenem Namen speichern."
+      subtitle="Vorlagen laden oder die aktuelle Konfiguration unter eigenem Namen speichern."
     >
+      <div className="mb-4 space-y-2">
+        {RECIPES.map((recipe) => (
+          <button
+            key={recipe.name}
+            type="button"
+            onClick={() => onLoadConfig(recipe.build())}
+            className="block min-h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-left hover:border-emerald-600 dark:border-zinc-600 dark:bg-zinc-900 dark:hover:border-emerald-500"
+          >
+            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              {recipe.name}
+            </span>
+            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+              {recipe.description}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex gap-2">
         <input
           type="text"
@@ -75,13 +105,20 @@ export function Presets({ presets, onSave, onLoad, onDelete, onReset }: PresetsP
         </ul>
       )}
 
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-3 min-h-11 w-full rounded-lg border border-zinc-300 text-sm font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-600 dark:text-zinc-300"
-      >
-        Reset auf Standard
-      </button>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={onReset}
+          className="min-h-11 flex-1 rounded-lg border border-zinc-300 text-sm font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-600 dark:text-zinc-300"
+        >
+          Reset auf Standard
+        </button>
+        <CopyButton text={shareUrl} label="🔗 Link teilen" />
+      </div>
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        „Link teilen" kopiert eine URL, die die aktuelle Konfiguration enthält – ideal
+        zum Weitergeben oder als Lesezeichen.
+      </p>
     </Section>
   )
 }

@@ -4,9 +4,11 @@ import { copyText } from '../lib/clipboard'
 interface CopyButtonProps {
   text: string
   small?: boolean
+  /** Button-Beschriftung im Ruhezustand (Default: „Kopieren"). */
+  label?: string
 }
 
-export function CopyButton({ text, small }: CopyButtonProps) {
+export function CopyButton({ text, small, label = 'Kopieren' }: CopyButtonProps) {
   const [state, setState] = useState<'idle' | 'copied' | 'error'>('idle')
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -34,7 +36,7 @@ export function CopyButton({ text, small }: CopyButtonProps) {
             : 'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300'
       }`}
     >
-      {state === 'copied' ? '✓ Kopiert' : state === 'error' ? 'Fehler' : 'Kopieren'}
+      {state === 'copied' ? '✓ Kopiert' : state === 'error' ? 'Fehler' : label}
     </button>
   )
 }

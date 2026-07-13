@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Chip } from './components/Chip'
+import { Explainer } from './components/Explainer'
 import { NumberField } from './components/NumberField'
 import { OutputPanel } from './components/OutputPanel'
 import { Presets, type Preset } from './components/Presets'
@@ -7,39 +8,39 @@ import { Section } from './components/Section'
 import { Toggle } from './components/Toggle'
 import { FIRST_YEAR, PROTECTION_KEYS, PROTECTIONS, type Lang } from './data/terms'
 import { useLocalStorage } from './hooks/useLocalStorage'
-import {
-  buildQuery,
-  defaultConfig,
-  STAR_TIERS,
-  type QueryConfig,
-  type StarTier,
-} from './lib/buildQuery'
+import { buildQuery, defaultConfig, mergeConfig, STAR_TIERS, type QueryConfig } from './lib/buildQuery'
+import { buildShareUrl, decodeConfig } from './lib/urlState'
 
 type Theme = 'system' | 'light' | 'dark'
 
-/** Gespeicherte Konfiguration mit den aktuellen Defaults zusammenführen. */
-function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig {
-  if (typeof stored !== 'object' || stored === null) return fallback
-  const s = stored as Partial<QueryConfig>
-  return {
-    ...fallback,
-    ...s,
-    protections: { ...fallback.protections, ...(s.protections ?? {}) },
-    stars: Array.isArray(s.stars)
-      ? s.stars.filter((t): t is StarTier => STAR_TIERS.includes(t as StarTier))
-      : fallback.stars,
-    keepYears: Array.isArray(s.keepYears)
-      ? s.keepYears.filter((y): y is number => typeof y === 'number')
-      : fallback.keepYears,
+const CONFIG_KEY = 'pogo-search:config'
+
+/**
+ * Konfiguration aus einem geteilten Link (?c=…) übernehmen: in localStorage
+ * persistieren und den Parameter aus der URL entfernen. Läuft einmal beim
+ * Laden des Moduls, bevor React rendert.
+ */
+function consumeUrlConfig(): void {
+  const param = new URLSearchParams(window.location.search).get('c')
+  if (param === null) return
+  const shared = decodeConfig(param)
+  if (shared) {
+    try {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(shared))
+    } catch {
+      // localStorage blockiert – Konfiguration gilt dann nur bis zum Reload.
+    }
   }
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash)
 }
+consumeUrlConfig()
 
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: CURRENT_YEAR - FIRST_YEAR + 1 }, (_, i) => FIRST_YEAR + i)
 
 export default function App() {
   const [config, setConfig] = useLocalStorage<QueryConfig>(
-    'pogo-search:config',
+    CONFIG_KEY,
     defaultConfig(),
     mergeConfig,
   )
@@ -245,12 +246,18 @@ export default function App() {
 
         <OutputPanel
           lines={result.lines}
+          targets={result.targets}
+          exclusions={result.exclusions}
+          autoSplit={result.autoSplit}
           safeMode={config.safeMode}
           onSafeModeChange={(v) => patch({ safeMode: v })}
         />
 
+        <Explainer />
+
         <Presets
           presets={presets}
+          shareUrl={buildShareUrl(config)}
           onSave={(name) =>
             setPresets((prev) => [
               ...prev.filter((p) => p.name !== name),
@@ -258,6 +265,7 @@ export default function App() {
             ])
           }
           onLoad={(preset) => setConfig(mergeConfig(preset.config, defaultConfig()))}
+          onLoadConfig={(cfg) => setConfig(cfg)}
           onDelete={(name) => setPresets((prev) => prev.filter((p) => p.name !== name))}
           onReset={() => setConfig(defaultConfig())}
         />

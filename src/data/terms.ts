@@ -23,6 +23,7 @@ export const PROTECTION_KEYS = [
   'xxs',
   'dynamax',
   'gigantamax',
+  'specialMoves',
 ] as const
 
 export type ProtectionKey = (typeof PROTECTION_KEYS)[number]
@@ -100,6 +101,11 @@ export const PROTECTIONS: Record<ProtectionKey, ProtectionMeta> = {
     terms: { de: 'Gigadynamax', en: 'gigantamax' },
     label: 'Gigadynamax',
     info: 'Gigadynamax-Pokémon behalten (deutlich seltener als Dynamax).',
+  },
+  specialMoves: {
+    terms: { de: '@spezial', en: '@special' },
+    label: 'Spezialattacken',
+    info: 'Pokémon mit Event-, Legacy- oder Elite-TM-Attacken behalten.',
   },
 }
 
