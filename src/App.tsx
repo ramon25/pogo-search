@@ -111,6 +111,37 @@ export default function App() {
 
       <div className="space-y-4">
         <Section
+          title="Modus"
+          subtitle="Was willst du mit der Suche erreichen?"
+        >
+          <div className="flex flex-wrap gap-2">
+            <Chip
+              label="📦 Aufräumen"
+              active={config.mode === 'cleanup'}
+              onToggle={() => patch({ mode: 'cleanup' })}
+            />
+            <Chip
+              label="✨ Entwickeln"
+              active={config.mode === 'evolve'}
+              onToggle={() => patch({ mode: 'evolve' })}
+            />
+            <Chip
+              label="🍀 Lucky Trades"
+              active={config.mode === 'luckyTrade'}
+              onToggle={() => patch({ mode: 'luckyTrade' })}
+            />
+          </div>
+          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+            {config.mode === 'cleanup' &&
+              'Transfer-Kandidaten finden, ohne Wertvolles zu verlieren.'}
+            {config.mode === 'evolve' &&
+              'Entwicklungs-Futter für Masseentwicklungen (XP/Glücks-Ei) finden – Wertvolles bleibt aussen vor.'}
+            {config.mode === 'luckyTrade' &&
+              'Alte Fänge als Tausch-Kandidaten finden – je älter, desto höher die Glücks-Pokémon-Chance.'}
+          </p>
+        </Section>
+
+        <Section
           title="Spielsprache"
           subtitle="Suchbegriffe sind im Spiel lokalisiert – die Sprache muss zur Spieleinstellung passen."
         >
@@ -126,51 +157,126 @@ export default function App() {
           </div>
         </Section>
 
-        <Section
-          title="Ziel: Was soll gefunden werden?"
-          subtitle="Stufen werden als ODER-Gruppe kombiniert (0*,1*,2*) – die Ausschlüsse gelten dank Präzedenz für alle."
-        >
-          <div className="flex flex-wrap gap-2">
-            {STAR_TIERS.map((tier) => (
+        {config.mode === 'cleanup' && (
+          <Section
+            title="Ziel: Was soll gefunden werden?"
+            subtitle="Stufen werden als ODER-Gruppe kombiniert (0*,1*,2*) – die Ausschlüsse gelten dank Präzedenz für alle."
+          >
+            <div className="flex flex-wrap gap-2">
+              {STAR_TIERS.map((tier) => (
+                <Chip
+                  key={tier}
+                  label={tier.replace('*', '★')}
+                  active={config.stars.includes(tier)}
+                  disabled={config.allMode}
+                  onToggle={() =>
+                    patch({
+                      stars: config.stars.includes(tier)
+                        ? config.stars.filter((t) => t !== tier)
+                        : [...config.stars, tier],
+                    })
+                  }
+                />
+              ))}
+            </div>
+            <div className="mt-3 space-y-1">
+              <Toggle
+                label="Low WP"
+                info="Zusätzlich Pokémon mit niedrigen Kampfpunkten einschliessen."
+                checked={config.lowCpEnabled && !config.allMode}
+                onChange={(v) => patch({ lowCpEnabled: v })}
+              />
+              {config.lowCpEnabled && !config.allMode && (
+                <NumberField
+                  label="WP bis"
+                  value={config.lowCpMax}
+                  min={10}
+                  max={9999}
+                  onChange={(v) => patch({ lowCpMax: v })}
+                />
+              )}
+              <Toggle
+                label="Alle nicht-Geschützten"
+                info="Kein positives Kriterium – zeigt alles, was kein Schutz-Kriterium erfüllt."
+                checked={config.allMode}
+                onChange={(v) => patch({ allMode: v })}
+              />
+            </div>
+          </Section>
+        )}
+
+        {config.mode === 'evolve' && (
+          <Section
+            title="Ziel: Was soll entwickelt werden?"
+            subtitle="Findet Pokémon, für die genug Bonbons vorhanden sind – abzüglich der Schutz-Kriterien."
+          >
+            <div className="flex flex-wrap gap-2">
               <Chip
-                key={tier}
-                label={tier.replace('*', '★')}
-                active={config.stars.includes(tier)}
-                disabled={config.allMode}
-                onToggle={() =>
-                  patch({
-                    stars: config.stars.includes(tier)
-                      ? config.stars.filter((t) => t !== tier)
-                      : [...config.stars, tier],
-                  })
-                }
+                label="Alle entwickelbaren"
+                active={config.evolveVariant === 'all'}
+                onToggle={() => patch({ evolveVariant: 'all' })}
               />
-            ))}
-          </div>
-          <div className="mt-3 space-y-1">
-            <Toggle
-              label="Low WP"
-              info="Zusätzlich Pokémon mit niedrigen Kampfpunkten einschliessen."
-              checked={config.lowCpEnabled && !config.allMode}
-              onChange={(v) => patch({ lowCpEnabled: v })}
-            />
-            {config.lowCpEnabled && !config.allMode && (
-              <NumberField
-                label="WP bis"
-                value={config.lowCpMax}
-                min={10}
-                max={9999}
-                onChange={(v) => patch({ lowCpMax: v })}
+              <Chip
+                label="Nur neue Dex-Einträge"
+                active={config.evolveVariant === 'new'}
+                onToggle={() => patch({ evolveVariant: 'new' })}
               />
-            )}
-            <Toggle
-              label="Alle nicht-Geschützten"
-              info="Kein positives Kriterium – zeigt alles, was kein Schutz-Kriterium erfüllt."
-              checked={config.allMode}
-              onChange={(v) => patch({ allMode: v })}
-            />
-          </div>
-        </Section>
+            </div>
+            <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-300">
+              Optional nur bestimmte IV-Stufen (leer = alle):
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {STAR_TIERS.map((tier) => (
+                <Chip
+                  key={tier}
+                  label={tier.replace('*', '★')}
+                  active={config.evolveStars.includes(tier)}
+                  onToggle={() =>
+                    patch({
+                      evolveStars: config.evolveStars.includes(tier)
+                        ? config.evolveStars.filter((t) => t !== tier)
+                        : [...config.evolveStars, tier],
+                    })
+                  }
+                />
+              ))}
+            </div>
+            <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              💡 Tipp: Vor der Masseentwicklung ein Glücks-Ei aktivieren – doppelte XP
+              pro Entwicklung. „Nur neue Dex-Einträge" priorisiert Entwicklungen, die
+              den Pokédex füllen.
+            </p>
+          </Section>
+        )}
+
+        {config.mode === 'luckyTrade' && (
+          <Section
+            title="Ziel: Fangjahre für den Tausch"
+            subtitle="Alte Fänge haben beim Tausch deutlich erhöhte Glücks-Chancen – 2016/2017 die höchsten."
+          >
+            <div className="flex flex-wrap gap-2">
+              {YEARS.map((year) => (
+                <Chip
+                  key={year}
+                  label={String(year)}
+                  active={config.tradeYears.includes(year)}
+                  onToggle={() =>
+                    patch({
+                      tradeYears: config.tradeYears.includes(year)
+                        ? config.tradeYears.filter((y) => y !== year)
+                        : [...config.tradeYears, year],
+                    })
+                  }
+                />
+              ))}
+            </div>
+            <p className="mt-3 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              🍀 Bereits getauschte Pokémon werden automatisch ausgeschlossen
+              (!getauscht) – sie können nicht erneut getauscht werden. Mit
+              Glücksfreunden ist der nächste Tausch garantiert ein Glücks-Pokémon.
+            </p>
+          </Section>
+        )}
 
         <Section
           title="Schutz-Kriterien"
@@ -215,13 +321,21 @@ export default function App() {
             </div>
           )}
 
-          <Toggle
-            label="Besonders alt behalten"
-            info="Schliesst alte Fänge aus – nach Alter in Tagen oder nach Fangjahr."
-            checked={config.ageEnabled}
-            onChange={(v) => patch({ ageEnabled: v })}
-          />
-          {config.ageEnabled && (
+          {config.mode === 'luckyTrade' && (
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Der Alters-Schutz ist im Lucky-Trade-Modus deaktiviert – das Fangjahr ist
+              hier das Ziel der Suche.
+            </p>
+          )}
+          {config.mode !== 'luckyTrade' && (
+            <Toggle
+              label="Besonders alt behalten"
+              info="Schliesst alte Fänge aus – nach Alter in Tagen oder nach Fangjahr."
+              checked={config.ageEnabled}
+              onChange={(v) => patch({ ageEnabled: v })}
+            />
+          )}
+          {config.mode !== 'luckyTrade' && config.ageEnabled && (
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Chip
