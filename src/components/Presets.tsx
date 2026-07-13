@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { RECIPES } from '../data/recipes'
-import type { QueryConfig } from '../lib/buildQuery'
+import { defaultConfig, mergeConfig, type QueryConfig } from '../lib/buildQuery'
 import { Section } from './Section'
 import { CopyButton } from './CopyButton'
 
@@ -16,7 +16,34 @@ interface PresetsProps {
   onLoad: (preset: Preset) => void
   onLoadConfig: (config: QueryConfig) => void
   onDelete: (name: string) => void
+  onImport: (presets: Preset[]) => void
   onReset: () => void
+}
+
+/** Import-Datei validieren: akzeptiert {presets: […]} oder ein blankes Array. */
+function parsePresetFile(raw: string): Preset[] | null {
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    const list = Array.isArray(parsed)
+      ? parsed
+      : typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as { presets?: unknown }).presets)
+        ? ((parsed as { presets: unknown[] }).presets)
+        : null
+    if (!list) return null
+    const presets: Preset[] = []
+    for (const item of list) {
+      if (typeof item !== 'object' || item === null) continue
+      const { name, config } = item as { name?: unknown; config?: unknown }
+      if (typeof name !== 'string' || !name.trim()) continue
+      presets.push({
+        name: name.trim().slice(0, 40),
+        config: mergeConfig(config, defaultConfig()),
+      })
+    }
+    return presets
+  } catch {
+    return null
+  }
 }
 
 /** Vorlagen, benutzerdefinierte Presets (localStorage) und Teilen-Link. */
@@ -27,15 +54,38 @@ export function Presets({
   onLoad,
   onLoadConfig,
   onDelete,
+  onImport,
   onReset,
 }: PresetsProps) {
   const [name, setName] = useState('')
+  const [importMessage, setImportMessage] = useState('')
+  const fileInput = useRef<HTMLInputElement>(null)
 
   function save() {
     const trimmed = name.trim()
     if (!trimmed) return
     onSave(trimmed)
     setName('')
+  }
+
+  function exportPresets() {
+    const payload = JSON.stringify({ version: 1, presets }, null, 2)
+    const url = URL.createObjectURL(new Blob([payload], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'pogo-search-presets.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function importPresets(file: File) {
+    const parsed = parsePresetFile(await file.text())
+    if (!parsed || parsed.length === 0) {
+      setImportMessage('⚠️ Keine gültigen Presets in der Datei gefunden.')
+      return
+    }
+    onImport(parsed)
+    setImportMessage(`✓ ${parsed.length} Preset${parsed.length === 1 ? '' : 's'} importiert.`)
   }
 
   return (
@@ -115,9 +165,41 @@ export function Presets({
         </button>
         <CopyButton text={shareUrl} label="🔗 Link teilen" />
       </div>
+
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={exportPresets}
+          disabled={presets.length === 0}
+          className="min-h-11 flex-1 rounded-lg border border-zinc-300 text-sm font-medium text-zinc-700 hover:border-zinc-500 disabled:opacity-40 dark:border-zinc-600 dark:text-zinc-300"
+        >
+          ⬇️ Exportieren
+        </button>
+        <button
+          type="button"
+          onClick={() => fileInput.current?.click()}
+          className="min-h-11 flex-1 rounded-lg border border-zinc-300 text-sm font-medium text-zinc-700 hover:border-zinc-500 dark:border-zinc-600 dark:text-zinc-300"
+        >
+          ⬆️ Importieren
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) void importPresets(file)
+            e.target.value = '' // gleiche Datei erneut wählbar
+          }}
+        />
+      </div>
+      {importMessage && (
+        <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">{importMessage}</p>
+      )}
       <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        „Link teilen" kopiert eine URL, die die aktuelle Konfiguration enthält – ideal
-        zum Weitergeben oder als Lesezeichen.
+        „Link teilen" kopiert eine URL mit der aktuellen Konfiguration. Export/Import
+        sichert die eigenen Presets als JSON-Datei – z. B. für den Handy-Wechsel.
       </p>
     </Section>
   )

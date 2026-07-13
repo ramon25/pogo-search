@@ -24,6 +24,9 @@ export const PROTECTION_KEYS = [
   'dynamax',
   'gigantamax',
   'specialMoves',
+  'mega',
+  'bestBuddy',
+  'defender',
 ] as const
 
 export type ProtectionKey = (typeof PROTECTION_KEYS)[number]
@@ -106,6 +109,21 @@ export const PROTECTIONS: Record<ProtectionKey, ProtectionMeta> = {
     terms: { de: '@spezial', en: '@special' },
     label: 'Spezialattacken',
     info: 'Pokémon mit Event-, Legacy- oder Elite-TM-Attacken behalten.',
+  },
+  mega: {
+    terms: { de: 'Mega1-', en: 'mega1-' },
+    label: 'Mega-entwickelt',
+    info: 'Pokémon mit investierter Mega-Energie behalten (Mega-Level 1 oder höher).',
+  },
+  bestBuddy: {
+    terms: { de: 'Kumpel4-', en: 'buddy4-' },
+    label: 'Hyper-/Bester Kumpel',
+    info: 'Pokémon ab Kumpel-Level 4 (Hyper-Kumpel und Bester Kumpel) behalten.',
+  },
+  defender: {
+    terms: { de: 'Verteidiger', en: 'defender' },
+    label: 'Arena-Verteidiger',
+    info: 'Pokémon, die gerade eine Arena verteidigen – hält die Liste sauber.',
   },
 }
 
