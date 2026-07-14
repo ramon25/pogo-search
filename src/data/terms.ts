@@ -24,7 +24,6 @@ export const PROTECTION_KEYS = [
   'dynamax',
   'gigantamax',
   'specialMoves',
-  'mega',
   'bestBuddy',
   'defender',
 ] as const
@@ -110,11 +109,9 @@ export const PROTECTIONS: Record<ProtectionKey, ProtectionMeta> = {
     label: 'Spezialattacken',
     info: 'Pokémon mit Event-, Legacy- oder Elite-TM-Attacken behalten.',
   },
-  mega: {
-    terms: { de: 'Mega1-', en: 'mega1-' },
-    label: 'Mega-entwickelt',
-    info: 'Pokémon mit investierter Mega-Energie behalten (Mega-Level 1 oder höher).',
-  },
+  // Kein Mega-Schutz: Die Negation von Mega-Suchen (!mega1- etc.) ist ein
+  // bekannter Spiel-Bug und wird ignoriert – ein Toggle würde nur scheinbar
+  // schützen. Workaround: mega-entwickelte Pokémon als Favorit markieren.
   bestBuddy: {
     terms: { de: 'Kumpel4-', en: 'buddy4-' },
     label: 'Hyper-/Bester Kumpel',
