@@ -42,8 +42,10 @@ Wichtige Spielmechanik, auf der die Logik basiert:
     Suche zuhause ausführen – die Distanz misst ab dem aktuellen Standort.
 - Schutz-Toggles (Shiny, Glücks, Crypto, erlöst, kostümiert, 4★, legendär, mysteriös,
   Favorit, XXL, XXS, Dynamax, Gigadynamax, Spezialattacken `@spezial`,
-  Mega-entwickelt `Mega1-`, Kumpel-Level `Kumpel4-`, Arena-Verteidiger) –
-  standardmässig alle an
+  Kumpel-Level `Kumpel4-`, Arena-Verteidiger) – standardmässig alle an.
+  Kein Mega-Schutz: Die Negation von Mega-Suchen (`!mega1-`) ist ein bekannter
+  Spiel-Bug und wird ignoriert – mega-entwickelte Pokémon stattdessen als
+  Favorit markieren.
 - Parametrisch: Distanz in km, Alter in Tagen **oder** Fangjahre (Multi-Select)
 - Ziel-Stufen 0★–3★ (ODER-Gruppe), „Low WP", „Alle nicht-Geschützten"
 - **Sicherer Modus:** pro Ziel-Stufe eine eigene reine UND-Zeile

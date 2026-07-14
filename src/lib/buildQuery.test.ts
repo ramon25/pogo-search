@@ -27,13 +27,13 @@ function fullConfig(): QueryConfig {
 describe('buildCombined', () => {
   it('erzeugt das dokumentierte DE-Beispiel exakt (inkl. Dynamax)', () => {
     expect(buildCombined(fullConfig())).toBe(
-      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Mega1-&!Kumpel4-&!Verteidiger&!Entfernung100-&!Alter730-',
+      '0*,1*,2*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Kumpel4-&!Verteidiger&!Entfernung100-&!Alter730-',
     )
   })
 
   it('wechselt mit lang=en alle lokalisierten Begriffe', () => {
     expect(buildCombined({ ...fullConfig(), lang: 'en' })).toBe(
-      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!dynamax&!gigantamax&!@special&!mega1-&!buddy4-&!defender&!distance100-&!age730-',
+      '0*,1*,2*&!shiny&!lucky&!shadow&!purified&!costume&!4*&!legendary&!mythical&!favorite&!XXL&!XXS&!dynamax&!gigantamax&!@special&!buddy4-&!defender&!distance100-&!age730-',
     )
   })
 
@@ -82,7 +82,7 @@ describe('buildSafeLines', () => {
     const lines = buildSafeLines(fullConfig())
     expect(lines).toHaveLength(3)
     expect(lines[0]).toBe(
-      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Mega1-&!Kumpel4-&!Verteidiger&!Entfernung100-&!Alter730-',
+      '0*&!Schillernd&!Glücks&!Crypto&!erlöst&!kostümiert&!4*&!legendär&!mysteriös&!Favorit&!XXL&!XXS&!Dynamax&!Gigadynamax&!@spezial&!Kumpel4-&!Verteidiger&!Entfernung100-&!Alter730-',
     )
     for (const line of lines) {
       expect(line).not.toContain(',') // rein UND, keine ODER-Gruppe
@@ -135,7 +135,7 @@ function oversizedConfig(): QueryConfig {
     lowCpEnabled: true,
     ageEnabled: true,
     ageMode: 'years',
-    keepYears: [2016, 2017, 2018],
+    keepYears: [2016, 2017, 2018, 2019],
   }
 }
 
@@ -326,7 +326,7 @@ describe('buildProtectedLines (Umkehr-Check)', () => {
     const lines = buildProtectedLines(fullConfig())
     expect(lines).toHaveLength(1)
     expect(lines[0]).toBe(
-      'Schillernd,Glücks,Crypto,erlöst,kostümiert,4*,legendär,mysteriös,Favorit,XXL,XXS,Dynamax,Gigadynamax,@spezial,Mega1-,Kumpel4-,Verteidiger,Entfernung100-,Alter730-',
+      'Schillernd,Glücks,Crypto,erlöst,kostümiert,4*,legendär,mysteriös,Favorit,XXL,XXS,Dynamax,Gigadynamax,@spezial,Kumpel4-,Verteidiger,Entfernung100-,Alter730-',
     )
     expect(lines[0]).not.toContain('!')
     expect(lines[0]).not.toContain('&')
@@ -378,5 +378,14 @@ describe('mergeConfig', () => {
   it('fällt bei Nicht-Objekten auf die Defaults zurück', () => {
     expect(mergeConfig('kaputt', defaultConfig())).toEqual(defaultConfig())
     expect(mergeConfig(null, defaultConfig())).toEqual(defaultConfig())
+  })
+
+  it('entfernt unbekannte Schutz-Schlüssel (z. B. den früheren Mega-Schutz)', () => {
+    const merged = mergeConfig({ protections: { mega: true, shiny: false } }, defaultConfig())
+    expect('mega' in merged.protections).toBe(false)
+    expect(merged.protections.shiny).toBe(false)
+    expect(buildExclusions({ ...defaultConfig(), protections: merged.protections })).not.toContain(
+      '!Mega1-',
+    )
   })
 })

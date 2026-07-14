@@ -310,7 +310,16 @@ export function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig
         ? [s.travelRing[0]!, s.travelRing[1]!]
         : null,
     evolveVariant: s.evolveVariant === 'new' ? 'new' : 'all',
-    protections: { ...fallback.protections, ...(s.protections ?? {}) },
+    // Nur bekannte Schutz-Schlüssel übernehmen – entfernte Kriterien
+    // (z. B. der frühere Mega-Schutz) verschwinden so aus alten Configs.
+    protections: Object.fromEntries(
+      PROTECTION_KEYS.map((k) => [
+        k,
+        typeof (s.protections as Record<string, unknown> | undefined)?.[k] === 'boolean'
+          ? ((s.protections as Record<string, boolean>)[k] as boolean)
+          : fallback.protections[k],
+      ]),
+    ) as Record<ProtectionKey, boolean>,
     stars: starList(s.stars, fallback.stars),
     evolveStars: starList(s.evolveStars, fallback.evolveStars),
     keepYears: yearList(s.keepYears, fallback.keepYears),
