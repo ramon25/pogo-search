@@ -403,7 +403,8 @@ export default function App() {
             {config.discoverKey &&
               findDiscoverCard(config.discoverKey)?.randomize && (
                 <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  🎲-Karten würfeln bei jedem Antippen neu.
+                  🎲-Karten würfeln bei jedem Antippen neu. Eine Kombi kann auch mal
+                  leer ausgehen – einfach nochmal würfeln.
                 </p>
               )}
           </Section>
