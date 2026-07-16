@@ -19,6 +19,7 @@ import {
   STAR_TIERS,
   type QueryConfig,
 } from './lib/buildQuery'
+import { DISCOVER_CARDS, findDiscoverCard, rollDiscoverCard } from './data/discover'
 import { distanceKm, distanceRing, type GeoPoint } from './lib/geo'
 import { buildShareUrl, decodeConfig } from './lib/urlState'
 
@@ -168,6 +169,11 @@ export default function App() {
               active={config.mode === 'travel'}
               onToggle={() => patch({ mode: 'travel' })}
             />
+            <Chip
+              label="🔎 Entdecken"
+              active={config.mode === 'discover'}
+              onToggle={() => patch({ mode: 'discover' })}
+            />
           </div>
           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             {config.mode === 'cleanup' &&
@@ -178,6 +184,8 @@ export default function App() {
               'Alte Fänge als Tausch-Kandidaten finden – je älter, desto höher die Glücks-Pokémon-Chance.'}
             {config.mode === 'travel' &&
               'Fänge von einer Reise wiederfinden – über die Distanz zwischen Heimat und Reiseziel.'}
+            {config.mode === 'discover' &&
+              'Coole Pokémon in der eigenen Box wiederentdecken – kuratiert oder per Zufall.'}
           </p>
         </Section>
 
@@ -342,6 +350,66 @@ export default function App() {
           </Section>
         )}
 
+        {config.mode === 'discover' && (
+          <Section
+            title="Was willst du entdecken?"
+            subtitle="Positiv-Suchen zum Stöbern – hier wird nichts verschickt, nur bestaunt."
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  const roll = rollDiscoverCard()
+                  patch({ discoverKey: roll.key, discoverParams: roll.params })
+                }}
+                className="min-h-9 shrink-0 rounded-lg bg-emerald-600 px-3 text-xs font-medium text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:text-zinc-900"
+              >
+                🎲 Überrasch mich!
+              </button>
+            }
+          >
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {DISCOVER_CARDS.map((card) => {
+                const active = config.discoverKey === card.key
+                return (
+                  <button
+                    key={card.key}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      patch({
+                        discoverKey: card.key,
+                        discoverParams: card.randomize?.() ?? [],
+                      })
+                    }
+                    className={`min-h-11 rounded-lg border px-3 py-2 text-left transition-colors ${
+                      active
+                        ? 'border-emerald-600 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950'
+                        : 'border-zinc-200 bg-white hover:border-emerald-600 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-emerald-500'
+                    }`}
+                  >
+                    <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                      {card.emoji} {card.title}
+                      {card.randomize && (
+                        <span className="ml-1 text-xs text-zinc-400">🎲</span>
+                      )}
+                    </span>
+                    <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                      {card.description}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {config.discoverKey &&
+              findDiscoverCard(config.discoverKey)?.randomize && (
+                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  🎲-Karten würfeln bei jedem Antippen neu. Eine Kombi kann auch mal
+                  leer ausgehen – einfach nochmal würfeln.
+                </p>
+              )}
+          </Section>
+        )}
+
         {config.mode === 'luckyTrade' && (
           <Section
             title="Ziel: Fangjahre für den Tausch"
@@ -371,6 +439,7 @@ export default function App() {
           </Section>
         )}
 
+        {config.mode !== 'discover' && (
         <Section
           title="Schutz-Kriterien"
           subtitle="Jeder aktive Schalter schliesst die Kategorie per !Begriff aus – sie kann nicht im Ergebnis landen."
@@ -411,7 +480,9 @@ export default function App() {
             ))}
           </div>
         </Section>
+        )}
 
+        {config.mode !== 'discover' && (
         <Section title="Parametrische Schutz-Kriterien">
           {config.mode === 'travel' && (
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -502,6 +573,7 @@ export default function App() {
             </div>
           )}
         </Section>
+        )}
 
         <OutputPanel
           lines={result.lines}
