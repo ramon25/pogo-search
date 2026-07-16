@@ -6,6 +6,7 @@
  * Deshalb: Ziel-Stufen mit `,` verketten, alle Ausschlüsse mit `&` anhängen.
  */
 
+import { findDiscoverCard } from '../data/discover'
 import {
   MAX_QUERY_LENGTH,
   MODE_TERMS,
@@ -28,8 +29,9 @@ export type AgeMode = 'days' | 'years'
  * - evolve: Masseentwicklungs-Futter finden (`entwickeln&…`)
  * - luckyTrade: alte Fänge als Lucky-Trade-Kandidaten finden (`Jahr2016,…`)
  * - travel: Reise-Fänge über einen Distanz-Ring finden (`Entfernung2650-2750&…`)
+ * - discover: coole Pokémon entdecken (kuratierte/zufällige Positiv-Suchen)
  */
-export type Mode = 'cleanup' | 'evolve' | 'luckyTrade' | 'travel'
+export type Mode = 'cleanup' | 'evolve' | 'luckyTrade' | 'travel' | 'discover'
 
 export type EvolveVariant = 'all' | 'new'
 
@@ -68,6 +70,9 @@ export interface QueryConfig {
    * (eigener localStorage-Schlüssel), damit er nie in geteilten Links landet.
    */
   travelRing: [number, number] | null
+  /** Entdecken-Modus: gewählte Karte und deren gewürfelte Parameter. */
+  discoverKey: string | null
+  discoverParams: number[]
   /** Sicherer Modus: pro Ziel eine eigene reine UND-Zeile. */
   safeMode: boolean
 }
@@ -94,6 +99,8 @@ export function defaultConfig(): QueryConfig {
     evolveStars: [],
     tradeYears: [2016, 2017],
     travelRing: null,
+    discoverKey: null,
+    discoverParams: [],
     safeMode: false,
   }
 }
@@ -101,6 +108,9 @@ export function defaultConfig(): QueryConfig {
 /** Alle aktiven Ausschlüsse (`!Begriff`) in stabiler Reihenfolge. */
 export function buildExclusions(cfg: QueryConfig): string[] {
   const { lang } = cfg
+  // Entdecken ist eine reine Positiv-Suche (anschauen, nicht verschicken) –
+  // Schutz-Ausschlüsse sind hier irrelevant.
+  if (cfg.mode === 'discover') return []
   const exclusions: string[] = []
 
   for (const key of PROTECTION_KEYS) {
@@ -260,6 +270,14 @@ export function buildQuery(cfg: QueryConfig): QueryResult {
     return { lines: [], exclusions, targets: [], autoSplit: false }
   }
 
+  // Entdecken: Die gewählte Karte liefert eine fertige Positiv-Suche
+  // (kann selbst & und , enthalten) – ohne Karte keine Ausgabe.
+  if (cfg.mode === 'discover') {
+    const card = cfg.discoverKey ? findDiscoverCard(cfg.discoverKey) : undefined
+    const line = card ? card.build(cfg.lang, cfg.discoverParams) : ''
+    return { lines: line ? [line] : [], exclusions: [], targets: [], autoSplit: false }
+  }
+
   let lines: string[]
   let autoSplit = false
   if (cfg.safeMode) {
@@ -299,9 +317,19 @@ export function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig
     ...fallback,
     ...s,
     mode:
-      s.mode === 'evolve' || s.mode === 'luckyTrade' || s.mode === 'travel'
+      s.mode === 'evolve' ||
+      s.mode === 'luckyTrade' ||
+      s.mode === 'travel' ||
+      s.mode === 'discover'
         ? s.mode
         : 'cleanup',
+    discoverKey:
+      typeof s.discoverKey === 'string' && findDiscoverCard(s.discoverKey)
+        ? s.discoverKey
+        : null,
+    discoverParams: Array.isArray(s.discoverParams)
+      ? s.discoverParams.filter((n): n is number => typeof n === 'number')
+      : fallback.discoverParams,
     travelRing:
       Array.isArray(s.travelRing) &&
       s.travelRing.length === 2 &&

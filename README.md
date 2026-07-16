@@ -32,6 +32,11 @@ Wichtige Spielmechanik, auf der die Logik basiert:
   - **🍀 Lucky Trades** – alte Fänge als Tausch-Kandidaten finden
     (`Jahr2016,Jahr2017&…`); bereits Getauschte werden automatisch ausgeschlossen
     (`!getauscht`), der Alters-Schutz ist in diesem Modus deaktiviert
+  - **🔎 Entdecken** – coole Pokémon in der eigenen Box wiederentdecken:
+    15 kuratierte „Schatzsuche"-Karten (Shiny-Vitrine, Heiliger Gral
+    `Schillernd&4*`, Legenden-Saal, Weitgereiste …) plus Zufalls-Karten
+    (Dex-/Jahrgangs-/Distanz-Roulette) und ein „🎲 Überrasch mich!"-Button.
+    Reine Positiv-Suchen – Schutz-Kriterien sind hier ausgeblendet.
   - **🌍 Reise-Fänge** – Fänge aus z. B. Tromsø oder New York wiederfinden. Das
     Spiel kennt keine Ort-Suche, aber Distanz-Ringe: Das Tool berechnet die
     Luftlinie Heimatort→Reiseziel (Haversine) und generiert

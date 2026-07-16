@@ -302,6 +302,39 @@ describe('Reise-Fänge-Modus', () => {
   })
 })
 
+describe('Entdecken-Modus', () => {
+  it('gibt die Karten-Suche ohne Ausschlüsse aus', () => {
+    const cfg: QueryConfig = { ...defaultConfig(), mode: 'discover', discoverKey: 'holyGrail' }
+    const result = buildQuery(cfg)
+    expect(result.lines).toEqual(['Schillernd&4*'])
+    expect(result.exclusions).toHaveLength(0)
+    expect(buildQuery({ ...cfg, lang: 'en' }).lines).toEqual(['shiny&4*'])
+  })
+
+  it('nutzt die gespeicherten Parameter (deterministisch)', () => {
+    const cfg: QueryConfig = {
+      ...defaultConfig(),
+      mode: 'discover',
+      discoverKey: 'dexRoulette',
+      discoverParams: [100],
+    }
+    expect(buildQuery(cfg).lines).toEqual(['100-149'])
+  })
+
+  it('gibt ohne gewählte Karte nichts aus', () => {
+    const cfg: QueryConfig = { ...defaultConfig(), mode: 'discover' }
+    expect(buildQuery(cfg).lines).toHaveLength(0)
+  })
+
+  it('mergeConfig verwirft unbekannte Karten-Schlüssel', () => {
+    expect(mergeConfig({ discoverKey: 'gibtsNicht' }, defaultConfig()).discoverKey).toBeNull()
+    expect(mergeConfig({ discoverKey: 'veterans' }, defaultConfig()).discoverKey).toBe(
+      'veterans',
+    )
+    expect(mergeConfig({ mode: 'discover' }, defaultConfig()).mode).toBe('discover')
+  })
+})
+
 describe('mergeConfig Modus-Validierung', () => {
   it('fällt bei unbekanntem Modus auf cleanup zurück', () => {
     expect(mergeConfig({ mode: 'kaputt' }, defaultConfig()).mode).toBe('cleanup')
