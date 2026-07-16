@@ -8,7 +8,7 @@
  * Sprachwechsel, Presets und geteilte Links stabil bleiben.
  */
 
-import { FIRST_YEAR, type Lang } from './terms'
+import { FIRST_YEAR, SOURCE_TERMS, type Lang } from './terms'
 
 export interface DiscoverCard {
   key: string
@@ -87,6 +87,11 @@ export const COMBO_BLOCKS: ComboBlock[] = [
     randomize: () => 1 + randomStep(MAX_DEX - 100, 25),
     build: (_lang, start) => `${start}-${start + 99}`,
   },
+  // Herkunft – NUR ANHÄNGEN (Index-Stabilität, siehe oben)
+  { key: 'hatched', build: (lang) => SOURCE_TERMS.hatched[lang] },
+  { key: 'raid', build: (lang) => SOURCE_TERMS.raid[lang] },
+  { key: 'research', build: (lang) => SOURCE_TERMS.research[lang] },
+  { key: 'rocket', build: (lang) => SOURCE_TERMS.rocket[lang] },
 ]
 
 /**
@@ -100,6 +105,17 @@ const COMBO_INCOMPATIBLE: ReadonlyArray<readonly [string, string]> = [
   ['xxs', 'xxl'],
   ['legendary', 'mythical'],
   ['year', 'ageWindow'], // beide beschreiben das Fangalter – Widerspruchsgefahr
+  // Herkunft: ein Pokémon hat genau eine Quelle
+  ['hatched', 'raid'],
+  ['hatched', 'research'],
+  ['hatched', 'rocket'],
+  ['raid', 'research'],
+  ['raid', 'rocket'],
+  ['research', 'rocket'],
+  // Crypto kommen ausschliesslich von Team GO Rocket
+  ['shadow', 'hatched'],
+  ['shadow', 'raid'],
+  ['shadow', 'research'],
 ]
 
 function comboCompatible(a: string, b: string): boolean {
@@ -244,6 +260,20 @@ export const DISCOVER_CARDS: DiscoverCard[] = [
     randomize: () => [100 * Math.floor(Math.random() * 100)], // 0…9900 km
     build: (lang, [start = 0]) =>
       `${lang === 'de' ? 'Entfernung' : 'distance'}${start}-${start + 100}`,
+  },
+  {
+    key: 'raidTrophies',
+    emoji: '🏟️',
+    title: 'Raid-Trophäen',
+    description: 'Alles, was du aus Raids mitgenommen hast.',
+    build: (lang) => SOURCE_TERMS.raid[lang],
+  },
+  {
+    key: 'hatchery',
+    emoji: '🥚',
+    title: 'Brutstation',
+    description: 'Alle aus Eiern geschlüpften Pokémon.',
+    build: (lang) => SOURCE_TERMS.hatched[lang],
   },
   {
     key: 'comboRoulette',

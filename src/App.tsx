@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Chip } from './components/Chip'
-import { Explainer } from './components/Explainer'
+import { Builder } from './components/Builder'
+import { Cheatsheet } from './components/Cheatsheet'
+import { Checklist } from './components/Checklist'
 import { History, type HistoryEntry } from './components/History'
 import { LocationPicker } from './components/LocationPicker'
 import { NumberField } from './components/NumberField'
@@ -174,6 +176,11 @@ export default function App() {
               active={config.mode === 'discover'}
               onToggle={() => patch({ mode: 'discover' })}
             />
+            <Chip
+              label="🧱 Baukasten"
+              active={config.mode === 'builder'}
+              onToggle={() => patch({ mode: 'builder' })}
+            />
           </div>
           <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
             {config.mode === 'cleanup' &&
@@ -186,6 +193,8 @@ export default function App() {
               'Fänge von einer Reise wiederfinden – über die Distanz zwischen Heimat und Reiseziel.'}
             {config.mode === 'discover' &&
               'Coole Pokémon in der eigenen Box wiederentdecken – kuratiert oder per Zufall.'}
+            {config.mode === 'builder' &&
+              'Freier Baukasten: beliebige Kriterien zu einer eigenen Suche kombinieren – inkl. PvP-Liga-Vorlagen.'}
           </p>
         </Section>
 
@@ -410,6 +419,14 @@ export default function App() {
           </Section>
         )}
 
+        {config.mode === 'builder' && (
+          <Builder
+            lang={config.lang}
+            groups={config.builderGroups}
+            onChange={(builderGroups) => patch({ builderGroups })}
+          />
+        )}
+
         {config.mode === 'luckyTrade' && (
           <Section
             title="Ziel: Fangjahre für den Tausch"
@@ -439,7 +456,7 @@ export default function App() {
           </Section>
         )}
 
-        {config.mode !== 'discover' && (
+        {config.mode !== 'discover' && config.mode !== 'builder' && (
         <Section
           title="Schutz-Kriterien"
           subtitle="Jeder aktive Schalter schliesst die Kategorie per !Begriff aus – sie kann nicht im Ergebnis landen."
@@ -482,7 +499,7 @@ export default function App() {
         </Section>
         )}
 
-        {config.mode !== 'discover' && (
+        {config.mode !== 'discover' && config.mode !== 'builder' && (
         <Section title="Parametrische Schutz-Kriterien">
           {config.mode === 'travel' && (
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -593,7 +610,9 @@ export default function App() {
           onClear={() => setHistory([])}
         />
 
-        <Explainer />
+        <Checklist />
+
+        <Cheatsheet />
 
         <Presets
           presets={presets}

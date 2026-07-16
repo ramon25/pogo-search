@@ -6,6 +6,11 @@
  * Deshalb: Ziel-Stufen mit `,` verketten, alle Ausschlüsse mit `&` anhängen.
  */
 
+import {
+  buildBuilderQuery,
+  findBuilderDef,
+  type BuilderTerm,
+} from '../data/builder'
 import { findDiscoverCard } from '../data/discover'
 import {
   MAX_QUERY_LENGTH,
@@ -30,8 +35,9 @@ export type AgeMode = 'days' | 'years'
  * - luckyTrade: alte Fänge als Lucky-Trade-Kandidaten finden (`Jahr2016,…`)
  * - travel: Reise-Fänge über einen Distanz-Ring finden (`Entfernung2650-2750&…`)
  * - discover: coole Pokémon entdecken (kuratierte/zufällige Positiv-Suchen)
+ * - builder: freier Baukasten (UND-Gruppen aus beliebigen Kriterien)
  */
-export type Mode = 'cleanup' | 'evolve' | 'luckyTrade' | 'travel' | 'discover'
+export type Mode = 'cleanup' | 'evolve' | 'luckyTrade' | 'travel' | 'discover' | 'builder'
 
 export type EvolveVariant = 'all' | 'new'
 
@@ -73,6 +79,8 @@ export interface QueryConfig {
   /** Entdecken-Modus: gewählte Karte und deren gewürfelte Parameter. */
   discoverKey: string | null
   discoverParams: number[]
+  /** Baukasten: UND-Gruppen; innerhalb einer Gruppe gilt ODER. */
+  builderGroups: BuilderTerm[][]
   /** Sicherer Modus: pro Ziel eine eigene reine UND-Zeile. */
   safeMode: boolean
 }
@@ -101,6 +109,7 @@ export function defaultConfig(): QueryConfig {
     travelRing: null,
     discoverKey: null,
     discoverParams: [],
+    builderGroups: [],
     safeMode: false,
   }
 }
@@ -108,9 +117,9 @@ export function defaultConfig(): QueryConfig {
 /** Alle aktiven Ausschlüsse (`!Begriff`) in stabiler Reihenfolge. */
 export function buildExclusions(cfg: QueryConfig): string[] {
   const { lang } = cfg
-  // Entdecken ist eine reine Positiv-Suche (anschauen, nicht verschicken) –
-  // Schutz-Ausschlüsse sind hier irrelevant.
-  if (cfg.mode === 'discover') return []
+  // Entdecken/Baukasten definieren ihre Suche vollständig selbst –
+  // die Schutz-Ausschlüsse sind hier irrelevant.
+  if (cfg.mode === 'discover' || cfg.mode === 'builder') return []
   const exclusions: string[] = []
 
   for (const key of PROTECTION_KEYS) {
@@ -278,6 +287,13 @@ export function buildQuery(cfg: QueryConfig): QueryResult {
     return { lines: line ? [line] : [], exclusions: [], targets: [], autoSplit: false }
   }
 
+  // Baukasten: Gruppen = UND, innerhalb ODER – der String ist die
+  // wörtliche Übersetzung der zusammengeklickten Kriterien.
+  if (cfg.mode === 'builder') {
+    const line = buildBuilderQuery(cfg.lang, cfg.builderGroups)
+    return { lines: line ? [line] : [], exclusions: [], targets: [], autoSplit: false }
+  }
+
   let lines: string[]
   let autoSplit = false
   if (cfg.safeMode) {
@@ -320,9 +336,32 @@ export function mergeConfig(stored: unknown, fallback: QueryConfig): QueryConfig
       s.mode === 'evolve' ||
       s.mode === 'luckyTrade' ||
       s.mode === 'travel' ||
-      s.mode === 'discover'
+      s.mode === 'discover' ||
+      s.mode === 'builder'
         ? s.mode
         : 'cleanup',
+    builderGroups: Array.isArray(s.builderGroups)
+      ? (s.builderGroups as unknown[])
+          .filter((g): g is unknown[] => Array.isArray(g))
+          .map((g) =>
+            g
+              .filter(
+                (t): t is Record<string, unknown> => typeof t === 'object' && t !== null,
+              )
+              .filter((t) => typeof t.def === 'string' && findBuilderDef(t.def))
+              .map(
+                (t): BuilderTerm => ({
+                  def: t.def as string,
+                  neg: t.neg === true,
+                  min: typeof t.min === 'number' ? t.min : null,
+                  max: typeof t.max === 'number' ? t.max : null,
+                  value: typeof t.value === 'number' ? t.value : null,
+                  text: typeof t.text === 'string' ? t.text.slice(0, 30) : undefined,
+                }),
+              ),
+          )
+          .filter((g) => g.length > 0)
+      : fallback.builderGroups,
     discoverKey:
       typeof s.discoverKey === 'string' && findDiscoverCard(s.discoverKey)
         ? s.discoverKey
