@@ -37,6 +37,12 @@ Wichtige Spielmechanik, auf der die Logik basiert:
     `Schillernd&4*`, Legenden-Saal, Weitgereiste …) plus Zufalls-Karten
     (Dex-/Jahrgangs-/Distanz-Roulette) und ein „🎲 Überrasch mich!"-Button.
     Reine Positiv-Suchen – Schutz-Kriterien sind hier ausgeblendet.
+  - **🧱 Baukasten** – freier Such-Editor mit der vollen Ausdruckskraft der
+    Spiel-Syntax: UND-Gruppen, ODER innerhalb einer Gruppe, Negation pro
+    Kriterium. Bausteine: Eigenschaften, alle 18 Typen, Herkunft (geschlüpft/
+    Raid/Forschung/Rocket), WP-/Alters-/Distanz-/Dex-Bereiche, Fangjahr,
+    IV-Stufen und eigene Tags (`#…`). Inklusive PvP-Vorlagen (Superliga
+    `WP-1500&3*,4*`, Hyperliga, Meisterliga)
   - **🌍 Reise-Fänge** – Fänge aus z. B. Tromsø oder New York wiederfinden. Das
     Spiel kennt keine Ort-Suche, aber Distanz-Ringe: Das Tool berechnet die
     Luftlinie Heimatort→Reiseziel (Haversine) und generiert
@@ -66,7 +72,10 @@ Wichtige Spielmechanik, auf der die Logik basiert:
   Preset-Export/-Import als JSON-Datei (z. B. für den Handy-Wechsel)
 - **Teilbarer Link:** „Link teilen" kopiert eine URL mit der aktuellen Konfiguration
   (`?c=…`), die beim Öffnen automatisch übernommen wird
-- Erklär-Sektion „So räumst du sicher auf" mit Sortier-Tipp
+- **Frühjahrsputz-Checkliste:** der sichere Aufräum-Workflow als abhakbare
+  Schritte (Fortschritt übersteht Reloads)
+- **Spickzettel:** alle verifizierten Suchbegriffe DE/EN als durchsuchbare
+  Referenz mit Antippen-zum-Kopieren
 - **PWA:** auf dem Handy installierbar („Zum Home-Bildschirm hinzufügen"),
   funktioniert nach dem ersten Besuch auch offline
 - Mobile-first, Dark Mode (System-Präferenz + manueller Toggle)

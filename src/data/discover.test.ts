@@ -77,6 +77,10 @@ describe('DISCOVER_CARDS', () => {
       'ageWindow',
       'year',
       'dexWindow',
+      'hatched',
+      'raid',
+      'research',
+      'rocket',
     ])
     expect(buildCombo('de', [0, 0, 12, 500])).toBe('Schillernd&WP500-1000')
     expect(buildCombo('en', [0, 0, 12, 500])).toBe('shiny&cp500-1000')

@@ -154,6 +154,36 @@ export const MODE_TERMS = {
   traded: { de: 'getauscht', en: 'traded' },
 } as const satisfies Record<string, Record<Lang, string>>
 
+/** Herkunfts-Filter: Wie wurde das Pokémon gefangen? Quellen schliessen sich gegenseitig aus. */
+export const SOURCE_TERMS = {
+  hatched: { de: 'geschlüpft', en: 'hatched' },
+  raid: { de: 'Raid', en: 'raid' },
+  research: { de: 'Forschung', en: 'research' },
+  rocket: { de: 'Rocket', en: 'rocket' },
+} as const satisfies Record<string, Record<Lang, string>>
+
+/** Die 18 Typen – im Spiel als Suchbegriff mit lokalisiertem Namen. */
+export const TYPE_TERMS = {
+  normal: { de: 'Normal', en: 'normal' },
+  fire: { de: 'Feuer', en: 'fire' },
+  water: { de: 'Wasser', en: 'water' },
+  grass: { de: 'Pflanze', en: 'grass' },
+  electric: { de: 'Elektro', en: 'electric' },
+  ice: { de: 'Eis', en: 'ice' },
+  fighting: { de: 'Kampf', en: 'fighting' },
+  poison: { de: 'Gift', en: 'poison' },
+  ground: { de: 'Boden', en: 'ground' },
+  flying: { de: 'Flug', en: 'flying' },
+  psychic: { de: 'Psycho', en: 'psychic' },
+  bug: { de: 'Käfer', en: 'bug' },
+  rock: { de: 'Gestein', en: 'rock' },
+  ghost: { de: 'Geist', en: 'ghost' },
+  dragon: { de: 'Drache', en: 'dragon' },
+  dark: { de: 'Unlicht', en: 'dark' },
+  steel: { de: 'Stahl', en: 'steel' },
+  fairy: { de: 'Fee', en: 'fairy' },
+} as const satisfies Record<string, Record<Lang, string>>
+
 /** Erstes Jahr, in dem Pokémon GO verfügbar war. */
 export const FIRST_YEAR = 2016
 
